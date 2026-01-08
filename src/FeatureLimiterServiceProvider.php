@@ -25,19 +25,10 @@ class FeatureLimiterServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        if ( $this->app->runningInConsole() )
-        {
-            $this->publishes([
-                __DIR__ . '/../config/feature-limiter.php' => $this->app->configPath('feature-limiter.php'),
-            ], 'feature-limiter-config');
+        $this->publishes([
+            __DIR__ . '/../config/feature-limiter.php' => $this->app->configPath('feature-limiter.php'),
+        ], 'feature-limiter-config');
 
-            $publishesMigrationsMethod = method_exists($this, 'publishesMigrations')
-                ? 'publishesMigrations'
-                : 'publishes';
-
-            $this->{$publishesMigrationsMethod}([
-                __DIR__ . '/../database/migrations' => $this->app->databasePath('migrations'),
-            ], 'feature-limiter-migrations');
-        }
+        $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
     }
 }

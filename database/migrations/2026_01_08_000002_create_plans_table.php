@@ -1,8 +1,8 @@
 <?php
 
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Database\Migrations\Migration;
 
 return new class extends Migration
 {
@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create(config('feature-limiter.tables.plans', 'plan_definitions'), function (Blueprint $table) {
+        Schema::create(config('feature-limiter.tables.plans', 'fl_plans'), function (Blueprint $table) {
             $table->id();
             $table->string('key')->unique(); // free, starter, pro
             $table->string('name'); // Free, Starter, Pro
@@ -28,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists(config('feature-limiter.tables.plans', 'plan_definitions'));
+        Schema::dropIfExists(config('feature-limiter.tables.plans', 'fl_plans'));
     }
 };

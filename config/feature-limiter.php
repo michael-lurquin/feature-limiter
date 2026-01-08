@@ -12,10 +12,10 @@ return [
     */
 
     'tables' => [
-        'features'      => 'feature_definitions',
-        'plans'         => 'plan_definitions',
-        'plan_features' => 'plan_feature_values',
-        'usages'        => 'feature_usages',
+        'features'      => 'fl_features',
+        'plans'         => 'fl_plans',
+        'plan_feature'  => 'fl_feature_plan',
+        'usages'        => 'fl_feature_usages',
     ],
 
     /*
