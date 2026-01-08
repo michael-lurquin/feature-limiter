@@ -4,6 +4,7 @@ namespace MichaelLurquin\FeatureLimiter\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use MichaelLurquin\FeatureLimiter\Enums\ResetPeriod;
 use MichaelLurquin\FeatureLimiter\Enums\FeatureType;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
@@ -28,6 +29,7 @@ class Feature extends Model
 
     protected $casts = [
         'type' => FeatureType::class,
+        'reset_period' => ResetPeriod::class,
         'active' => 'boolean',
         'sort' => 'integer',
     ];
@@ -42,6 +44,6 @@ class Feature extends Model
 
     public function usages(): HasMany
     {
-        return $this->hasMany(FeatureUsage::class);
+        return $this->hasMany(FeatureUsage::class, 'feature_id');
     }
 }

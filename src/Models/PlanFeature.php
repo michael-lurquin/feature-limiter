@@ -7,7 +7,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class PlanFeature extends Pivot
 {
+    public $incrementing = false;
+
     public $timestamps = false;
+
+    protected $primaryKey = null;
 
     public function getTable()
     {
@@ -33,5 +37,15 @@ class PlanFeature extends Pivot
     public function feature(): BelongsTo
     {
         return $this->belongsTo(Feature::class, 'feature_id');
+    }
+
+    public function valueAsInt(): ?int
+    {
+        return is_null($this->value) ? null : (int) $this->value;
+    }
+
+    public function valueAsBytes(): ?int
+    {
+        return null;
     }
 }

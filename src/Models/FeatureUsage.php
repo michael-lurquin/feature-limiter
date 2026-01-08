@@ -17,14 +17,12 @@ class FeatureUsage extends Model
         'usable_type',
         'usable_id',
         'feature_id',
-        'period_start',
         'period_end',
         'used',
     ];
 
     protected $casts = [
         'used' => 'integer',
-        'period_start' => 'date',
         'period_end' => 'date',
     ];
 

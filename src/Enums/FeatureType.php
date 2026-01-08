@@ -2,7 +2,7 @@
 
 namespace MichaelLurquin\FeatureLimiter\Enums;
 
-enum FeatureType : string
+enum FeatureType: string
 {
     case BOOLEAN = 'boolean';
     case INTEGER = 'integer';

@@ -3,6 +3,7 @@
 namespace MichaelLurquin\FeatureLimiter;
 
 use Illuminate\Support\ServiceProvider;
+use MichaelLurquin\FeatureLimiter\FeatureLimiterManager;
 
 class FeatureLimiterServiceProvider extends ServiceProvider
 {
@@ -16,6 +17,10 @@ class FeatureLimiterServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(
             __DIR__ . '/../config/feature-limiter.php', 'feature-limiter'
         );
+
+        $this->app->singleton('feature-limiter', function ($app) {
+            return new FeatureLimiterManager();
+        });
     }
 
     /**
