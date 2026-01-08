@@ -1,0 +1,37 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create(config('feature-limiter.tables.features', 'feature_definitions'), function (Blueprint $table) {
+            $table->id();
+            $table->string('key')->unique(); // ex: storage, sites, custom_code
+            $table->string('name'); // label humain
+            $table->string('type'); // boolean|integer|bytes|string
+            $table->string('unit')->nullable(); // ex: "GB", "sites", "credits" (optionnal)
+            $table->string('reset_period')->default('none'); // none|daily|monthly|yearly
+            $table->text('description')->nullable();
+            $table->unsignedInteger('sort')->default(0);
+            $table->boolean('active')->default(true);
+            $table->timestamps();
+
+            $table->index(['active', 'sort']);
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists(config('feature-limiter.tables.features', 'feature_definitions'));
+    }
+};
