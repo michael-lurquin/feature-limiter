@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('key')->unique(); // ex: storage, sites, custom_code
             $table->string('name'); // label humain
             $table->string('group')->nullable();
-            $table->string('type'); // boolean|integer|bytes|string
+            $table->string('type'); // boolean|integer|storage
             $table->string('unit')->nullable(); // ex: "GB", "sites", "credits" (optionnal)
             $table->string('reset_period')->default('none'); // none|daily|monthly|yearly
             $table->text('description')->nullable();
