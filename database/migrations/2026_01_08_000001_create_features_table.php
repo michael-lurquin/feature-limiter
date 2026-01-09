@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('group')->nullable();
             $table->string('type'); // boolean|integer|storage
             $table->string('unit')->nullable(); // ex: "GB", "sites", "credits" (optionnal)
-            $table->string('reset_period')->default('none'); // none|daily|monthly|yearly
+            $table->string('reset_period')->default(config('feature-limiter.defaults.reset_period', 'none')); // none|daily|monthly|yearly
             $table->text('description')->nullable();
             $table->unsignedInteger('sort')->default(0);
             $table->boolean('active')->default(true);

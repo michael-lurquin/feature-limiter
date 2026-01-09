@@ -15,11 +15,16 @@ return new class extends Migration
             $table->id();
             $table->string('key')->unique(); // free, starter, pro
             $table->string('name'); // Free, Starter, Pro
+
+            $table->string('provider')->nullable(); // 'cashier', 'paddle', ...
+            $table->string('provider_monthly_id')->nullable(); // ex price_xxx
+            $table->string('provider_yearly_id')->nullable();
+
             $table->unsignedInteger('sort')->default(0);
             $table->boolean('active')->default(true);
             $table->timestamps();
 
-            $table->index(['active', 'sort']);
+            $table->index(['active', 'sort', 'provider', 'provider_monthly_id', 'provider_yearly_id']);
         });
     }
 

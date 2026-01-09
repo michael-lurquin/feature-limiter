@@ -17,13 +17,15 @@ class FeatureUsage extends Model
         'usable_type',
         'usable_id',
         'feature_id',
+        'period_start',
         'period_end',
         'used',
     ];
 
     protected $casts = [
         'used' => 'integer',
-        'period_end' => 'date',
+        'period_start' => 'date:Y-m-d',
+        'period_end' => 'date:Y-m-d',
     ];
 
     public function usable(): MorphTo

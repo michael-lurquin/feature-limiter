@@ -26,5 +26,28 @@ return [
 
     'defaults' => [
         'reset_period' => 'none', // none|daily|monthly|yearly
+        'plan_key' => 'free',
+    ],
+
+    'billing' => [
+        // provider par défaut
+        'default' => env('FEATURE_LIMITER_BILLING_PROVIDER', 'cashier'),
+
+        // liste des providers dispo
+        'providers' => [
+            'cashier' => \MichaelLurquin\FeatureLimiter\Billing\CashierBillingProvider::class,
+            // 'paddle' => \...,
+            // 'manual' => \MichaelLurquin\FeatureLimiter\Billing\ManualBillingProvider::class,
+        ],
+
+        // réglages provider-specific
+        'cashier' => [
+            'subscription_name' => 'default', // Cashier subscription name
+        ],
+
+        // fallback si tu veux un mode sans provider externe
+        'manual' => [
+            // ex: une colonne sur billable, ou callback, etc.
+        ],
     ],
 ];

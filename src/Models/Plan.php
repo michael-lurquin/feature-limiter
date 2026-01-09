@@ -15,6 +15,9 @@ class Plan extends Model
     protected $fillable = [
         'key',
         'name',
+        'provider',
+        'provider_monthly_id',
+        'provider_yearly_id',
         'sort',
         'active',
     ];
