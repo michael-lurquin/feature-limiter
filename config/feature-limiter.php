@@ -50,4 +50,18 @@ return [
             // ex: une colonne sur billable, ou callback, etc.
         ],
     ],
+
+    'usage_retention' => [
+        'enabled' => env('FEATURE_LIMITER_USAGE_RETENTION_ENABLED', false),
+
+        // mode de purge
+        'keep' => [
+            'days' => env('FEATURE_LIMITER_USAGE_KEEP_DAYS', null), // ex: 90
+            'months' => env('FEATURE_LIMITER_USAGE_KEEP_MONTHS', null), // ex: 12
+            'years' => env('FEATURE_LIMITER_USAGE_KEEP_YEARS', null), // ex: 2
+        ],
+
+        // Si true: purge aussi les lignes used=0 (ça peut réduire drastiquement la table)
+        'prune_zero_usage' => env('FEATURE_LIMITER_PRUNE_ZERO_USAGE', false),
+    ],
 ];

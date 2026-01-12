@@ -1,6 +1,7 @@
 # Feature Limiter for Laravel
 
-A flexible **plan / feature / quota / usage** system for Laravel applications.  
+A flexible **plan / feature / quota / usage** system for Laravel applications.
+
 Supports:
 
 - Plan & Feature management  
@@ -8,6 +9,8 @@ Supports:
 - Usage tracking per billable (User, Tenant, Team, etc.)  
 - Unlimited features  
 - Storage units (e.g. `500MB`, `1GB`)  
+- Period-based resets (daily, weekly, monthly, yearly, lifetime)  
+- Transaction-safe consumption  
 - Pluggable billing providers (Cashier, manual, fake, etc.)  
 
 ---
@@ -36,6 +39,7 @@ php artisan migrate
 | **Quota** | The limit defined by the plan |
 | **Usage** | How much a billable has consumed |
 | **Billable** | Any model or object with an `id` |
+| **Reset period** | When usage is reset (none, daily, weekly, monthly, yearly) |
 
 ---
 
@@ -68,7 +72,7 @@ FeatureLimiter::feature('sites')
     ->group('create-design')
     ->type(FeatureType::INTEGER)
     ->unit('sites')
-    ->reset('none')
+    ->reset(ResetPeriod::NONE) // none|daily|weekly|monthly|yearly
     ->sort(0)
     ->active(true)
     ->save();
@@ -180,9 +184,45 @@ FeatureLimiter::for($billable)->setUsage('sites', 10);
 FeatureLimiter::for($billable)->clearUsage('sites');
 ```
 
+### Consuming quota (non-strict)
+
+```php
+$result = FeatureLimiter::for($billable)->consume('sites', 1);
+// returns false if not enough quota
+```
+
+### Consuming quota (strict)
+
+```php
+FeatureLimiter::for($billable)->consume('storage', '500MB', strict: true);
+// throws QuotaExceededException if quota is exceeded
+```
+
+### Convenience aliases
+
+```php
+FeatureLimiter::for($billable)->consumeOrFail('sites', 1);
+FeatureLimiter::for($billable)->consumeManyOrFail([
+    'sites' => 1,
+    'storage' => '500MB',
+]);
+```
+
+### Refund / rollback usage
+
+```php
+FeatureLimiter::for($billable)->refund('sites', 1);
+FeatureLimiter::for($billable)->refundMany([
+    'sites' => 1,
+    'storage' => '500MB',
+]);
+```
+
 ---
 
 ## Quota vs Usage
+
+Check if a billable can still consume quota:
 
 ```php
 FeatureLimiter::for($billable)->canConsume('sites', 1);
@@ -199,6 +239,20 @@ Exceeded quota:
 
 ```php
 FeatureLimiter::for($billable)->exceededQuota('sites', 1);
+```
+
+Multiple features at once:
+
+```php
+FeatureLimiter::for($billable)->canConsumeMany([
+    'sites' => 1,
+    'storage' => '500MB',
+]);
+
+FeatureLimiter::for($billable)->remainingQuotaMany([
+    'sites',
+    'storage',
+]);
 ```
 
 ---
@@ -242,6 +296,72 @@ $billable = new class {
     public int $id = 1;
 };
 ```
+
+---
+
+## Reset Periods
+
+Each feature can define how often its usage resets:
+
+```php
+ResetPeriod::NONE     // lifetime
+ResetPeriod::DAILY
+ResetPeriod::WEEKLY
+ResetPeriod::MONTHLY
+ResetPeriod::YEARLY
+```
+
+Usage is automatically grouped per period in the database.
+
+---
+
+## Pruning Old Feature Usages
+
+Over time, the `fl_feature_usages` table can grow significantly.
+FeatureLimiter provides a built-in Artisan command to clean up old usage records while keeping recent data for analytics, reporting, and charts.
+
+### Basic usage
+
+Remove all usage records older than **12 months**:
+
+```bash
+php artisan feature-limiter:prune-usages --months=12
+```
+
+Remove all usage records older than **90 days** (dry run – no deletion):
+
+```bash
+php artisan feature-limiter:prune-usages --days=90 --dry-run
+```
+
+### Optional flags
+
+| Option | Description |
+|--------|-------------|
+| `--days=90` | Keep only the last 90 days of usage |
+| `--months=12` | Keep only the last 12 months of usage |
+| `--years=2` | Keep only the last 2 years of usage |
+| `--dry-run` | Show what would be deleted without deleting |
+| `--prune-zero` | Also remove rows where `used = 0` |
+
+### Scheduler example
+
+```php
+$schedule->command('feature-limiter:prune-usages --months=12')->daily();
+```
+
+---
+
+## Why keep historical usages?
+
+FeatureLimiter stores all usage records by default so you can:
+
+- Build usage charts
+- Generate reports
+- Track growth over time
+- Audit consumption behavior
+
+The pruning command gives you **full control** over how much history you keep.
 
 ---
 

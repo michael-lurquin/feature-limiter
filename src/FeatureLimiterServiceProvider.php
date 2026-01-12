@@ -8,6 +8,7 @@ use MichaelLurquin\FeatureLimiter\Billing\BillingManager;
 use MichaelLurquin\FeatureLimiter\Support\PeriodResolver;
 use MichaelLurquin\FeatureLimiter\Contracts\BillingProvider;
 use MichaelLurquin\FeatureLimiter\Billing\CashierBillingProvider;
+use MichaelLurquin\FeatureLimiter\Console\PruneFeatureUsagesCommand;
 use MichaelLurquin\FeatureLimiter\Repositories\FeatureUsageRepository;
 
 class FeatureLimiterServiceProvider extends ServiceProvider
@@ -62,5 +63,12 @@ class FeatureLimiterServiceProvider extends ServiceProvider
         ], 'feature-limiter-config');
 
         $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
+
+        if ( $this->app->runningInConsole() )
+        {
+            $this->commands([
+                PruneFeatureUsagesCommand::class,
+            ]);
+        }
     }
 }

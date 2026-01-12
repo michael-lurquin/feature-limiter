@@ -8,18 +8,16 @@ use MichaelLurquin\FeatureLimiter\Models\Feature;
 use MichaelLurquin\FeatureLimiter\Tests\TestCase;
 use MichaelLurquin\FeatureLimiter\Enums\FeatureType;
 use MichaelLurquin\FeatureLimiter\Facades\FeatureLimiter;
+use MichaelLurquin\FeatureLimiter\Tests\Concerns\InteractsWithFeatureLimiter;
 
 class GrantBuilderTest extends TestCase
 {
+    use InteractsWithFeatureLimiter;
+
     public function test_it_attaches_limit_to_plan_feature(): void
     {
-        $plan = Plan::create(['key' => 'starter', 'name' => 'Starter']);
-
-        $feature = Feature::create([
-            'key' => 'sites',
-            'name' => 'Sites',
-            'type' => FeatureType::INTEGER,
-        ]);
+        $plan = $this->flPlan('starter');
+        $feature = $this->flFeature('sites', FeatureType::INTEGER);
 
         FeatureLimiter::grant('starter')->feature('sites')->quota(3);
 
@@ -34,13 +32,8 @@ class GrantBuilderTest extends TestCase
 
     public function test_it_attaches_unlimited_to_plan_feature(): void
     {
-        Plan::create(['key' => 'pro', 'name' => 'Pro']);
-
-        Feature::create([
-            'key' => 'storage',
-            'name' => 'Storage',
-            'type' => FeatureType::STORAGE,
-        ]);
+        $this->flPlan('pro', 'Pro');
+        $this->flFeature('storage', FeatureType::STORAGE);
 
         FeatureLimiter::grant('pro')->feature('storage')->unlimited();
 
@@ -94,11 +87,7 @@ class GrantBuilderTest extends TestCase
     {
         $this->expectException(InvalidArgumentException::class);
 
-        Feature::create([
-            'key' => 'sites',
-            'name' => 'Sites',
-            'type' => FeatureType::INTEGER,
-        ]);
+        $this->flFeature('sites', FeatureType::INTEGER);
 
         FeatureLimiter::grant('missing')->feature('sites')->quota(3);
     }
@@ -107,7 +96,7 @@ class GrantBuilderTest extends TestCase
     {
         $this->expectException(InvalidArgumentException::class);
 
-        Plan::create(['key' => 'starter', 'name' => 'Starter']);
+        $this->flPlan('starter');
 
         FeatureLimiter::grant('starter')->feature('missing')->quota(3);
     }

@@ -3,22 +3,22 @@
 namespace MichaelLurquin\FeatureLimiter\Tests\Builders;
 
 use InvalidArgumentException;
-use MichaelLurquin\FeatureLimiter\Models\Plan;
-use MichaelLurquin\FeatureLimiter\Models\Feature;
 use MichaelLurquin\FeatureLimiter\Tests\TestCase;
 use MichaelLurquin\FeatureLimiter\Enums\FeatureType;
 use MichaelLurquin\FeatureLimiter\Facades\FeatureLimiter;
+use MichaelLurquin\FeatureLimiter\Tests\Concerns\InteractsWithFeatureLimiter;
 
 class GrantFeaturesBuilderTest extends TestCase
 {
+    use InteractsWithFeatureLimiter;
+
     public function test_it_grants_multiple_features_in_one_call(): void
     {
-        Plan::create(['key' => 'starter', 'name' => 'Starter']);
-
-        Feature::create(['key' => 'sites', 'name' => 'Sites', 'type' => FeatureType::INTEGER]);
-        Feature::create(['key' => 'page', 'name' => 'Pages', 'type' => FeatureType::INTEGER]);
-        Feature::create(['key' => 'custom_code', 'name' => 'Custom code', 'type' => FeatureType::BOOLEAN]);
-        Feature::create(['key' => 'storage', 'name' => 'Storage', 'type' => FeatureType::STORAGE]);
+        $this->flPlan('starter');
+        $this->flFeature('sites', FeatureType::INTEGER);
+        $this->flFeature('page', FeatureType::INTEGER);
+        $this->flFeature('custom_code', FeatureType::BOOLEAN);
+        $this->flFeature('storage', FeatureType::STORAGE);
 
         $plan = FeatureLimiter::grant('starter')->features([
             'sites' => 3,
@@ -40,9 +40,8 @@ class GrantFeaturesBuilderTest extends TestCase
 
     public function test_null_means_unlimited_for_integer_or_storage(): void
     {
-        Plan::create(['key' => 'pro', 'name' => 'Pro']);
-
-        Feature::create(['key' => 'storage', 'name' => 'Storage', 'type' => FeatureType::STORAGE]);
+        $this->flPlan('pro', 'Pro');
+        $this->flFeature('storage', FeatureType::STORAGE);
 
         $plan = FeatureLimiter::grant('pro')->features(['storage' => null]);
 
@@ -55,22 +54,16 @@ class GrantFeaturesBuilderTest extends TestCase
     {
         $this->expectException(InvalidArgumentException::class);
 
-        Plan::create(['key' => 'starter', 'name' => 'Starter']);
-
-        Feature::create(['key' => 'custom_code', 'name' => 'Custom', 'type' => FeatureType::BOOLEAN]);
+        $this->flPlan('starter');
+        $this->flFeature('custom_code', FeatureType::BOOLEAN, 'Custom');
 
         FeatureLimiter::grant('starter')->features(['custom_code' => null]);
     }
 
     public function test_string_unlimited_sets_is_unlimited(): void
     {
-        Plan::create(['key' => 'pro', 'name' => 'Pro']);
-
-        Feature::create([
-            'key' => 'storage',
-            'name' => 'Storage',
-            'type' => FeatureType::STORAGE,
-        ]);
+        $this->flPlan('pro', 'Pro');
+        $this->flFeature('storage', FeatureType::STORAGE);
 
         $plan = FeatureLimiter::grant('pro')->features([
             'storage' => 'unlimited',

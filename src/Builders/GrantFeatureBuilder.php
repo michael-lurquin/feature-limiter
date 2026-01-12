@@ -52,7 +52,7 @@ class GrantFeatureBuilder
      * Value brute: string/int/bool/null, le parser normalise selon FeatureType.
      * $unlimited=true force unlimited (même si value non-null).
      */
-    public function value(?string $value, bool $unlimited = false): Plan
+    public function value(mixed $value, bool $unlimited = false): Plan
     {
         $this->rawValue = $value;
         $this->isUnlimited = $unlimited;

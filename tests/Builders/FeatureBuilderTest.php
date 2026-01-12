@@ -109,7 +109,7 @@ class FeatureBuilderTest extends TestCase
         FeatureLimiter::feature('sites')
             ->name('Sites')
             ->type(FeatureType::INTEGER)
-            ->reset('weekly') // invalid
+            ->reset('hourly') // invalid
             ->save();
     }
 

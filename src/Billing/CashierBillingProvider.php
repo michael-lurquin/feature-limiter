@@ -23,7 +23,7 @@ class CashierBillingProvider implements BillingProvider
             return $this->defaultPlanKey ? Plan::query()->where('key', $this->defaultPlanKey)->first() : null;
         }
 
-        $priceId = $sub->stripe_price ?? null;
+        $priceId = $this->extractPriceId($sub);
 
         if ( !$priceId )
         {
@@ -31,8 +31,8 @@ class CashierBillingProvider implements BillingProvider
         }
 
         return Plan::query()
-            ->where('stripe_price_monthly_id', $priceId)
-            ->orWhere('stripe_price_yearly_id', $priceId)
+            ->where('provider_monthly_id', $priceId)
+            ->orWhere('provider_yearly_id', $priceId)
             ->first()
                 ?? ( $this->defaultPlanKey ? Plan::query()->where('key', $this->defaultPlanKey)->first() : null );
     }
@@ -40,8 +40,8 @@ class CashierBillingProvider implements BillingProvider
     public function pricesFor(Plan $plan): array
     {
         return [
-            'monthly' => $plan->stripe_price_monthly_id ? ['provider_id' => $plan->stripe_price_monthly_id] : null,
-            'yearly'  => $plan->stripe_price_yearly_id ? ['provider_id' => $plan->stripe_price_yearly_id] : null,
+            'monthly' => $plan->provider_monthly_id ? ['provider_id' => $plan->provider_monthly_id] : null,
+            'yearly'  => $plan->provider_yearly_id ? ['provider_id' => $plan->provider_yearly_id] : null,
         ];
     }
 

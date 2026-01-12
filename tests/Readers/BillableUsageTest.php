@@ -3,14 +3,15 @@
 namespace MichaelLurquin\FeatureLimiter\Tests\Readers;
 
 use InvalidArgumentException;
-use MichaelLurquin\FeatureLimiter\Models\Feature;
 use MichaelLurquin\FeatureLimiter\Tests\TestCase;
 use MichaelLurquin\FeatureLimiter\Enums\FeatureType;
-use MichaelLurquin\FeatureLimiter\Facades\FeatureLimiter;
 use MichaelLurquin\FeatureLimiter\Tests\Fakes\FakeBillingProvider;
+use MichaelLurquin\FeatureLimiter\Tests\Concerns\InteractsWithFeatureLimiter;
 
 class BillableUsageTest extends TestCase
 {
+    use InteractsWithFeatureLimiter;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -18,13 +19,18 @@ class BillableUsageTest extends TestCase
         FakeBillingProvider::$resolver = null;
     }
 
+    private function readerWithIntegerFeature(string $key = 'sites')
+    {
+        $this->flFeature($key, FeatureType::INTEGER);
+
+        $billable = $this->flBillable(1);
+
+        return $this->flReader($billable);
+    }
+
     public function test_it_increments_decrements_and_sets_usage(): void
     {
-        Feature::create(['key' => 'sites', 'name' => 'Sites', 'type' => FeatureType::INTEGER]);
-
-        $billable = new class { public int $id = 1; };
-
-        $reader = FeatureLimiter::for($billable);
+        $reader = $this->readerWithIntegerFeature();
 
         $this->assertSame(0, $reader->usage('sites'));
 
@@ -43,22 +49,14 @@ class BillableUsageTest extends TestCase
 
     public function test_usage_defaults_to_zero_when_no_row_exists(): void
     {
-        Feature::create(['key' => 'sites', 'name' => 'Sites', 'type' => FeatureType::INTEGER]);
-
-        $billable = new class { public int $id = 1; };
-
-        $reader = FeatureLimiter::for($billable);
+        $reader = $this->readerWithIntegerFeature();
 
         $this->assertSame(0, $reader->usage('sites'));
     }
 
     public function test_increment_usage_creates_row_and_returns_new_value(): void
     {
-        Feature::create(['key' => 'sites', 'name' => 'Sites', 'type' => FeatureType::INTEGER]);
-
-        $billable = new class { public int $id = 1; };
-
-        $reader = FeatureLimiter::for($billable);
+        $reader = $this->readerWithIntegerFeature();
 
         $this->assertSame(2, $reader->incrementUsage('sites', 2));
         $this->assertSame(2, $reader->usage('sites'));
@@ -69,11 +67,7 @@ class BillableUsageTest extends TestCase
 
     public function test_decrement_usage_decreases_and_never_goes_below_zero(): void
     {
-        Feature::create(['key' => 'sites', 'name' => 'Sites', 'type' => FeatureType::INTEGER]);
-
-        $billable = new class { public int $id = 1; };
-
-        $reader = FeatureLimiter::for($billable);
+        $reader = $this->readerWithIntegerFeature();
 
         $reader->setUsage('sites', 5);
 
@@ -87,11 +81,7 @@ class BillableUsageTest extends TestCase
 
     public function test_set_usage_overwrites_value(): void
     {
-        Feature::create(['key' => 'sites', 'name' => 'Sites', 'type' => FeatureType::INTEGER]);
-
-        $billable = new class { public int $id = 1; };
-
-        $reader = FeatureLimiter::for($billable);
+        $reader = $this->readerWithIntegerFeature();
 
         $reader->incrementUsage('sites', 2);
         $this->assertSame(2, $reader->usage('sites'));
@@ -105,11 +95,7 @@ class BillableUsageTest extends TestCase
 
     public function test_clear_usage_deletes_row_and_usage_returns_zero_again(): void
     {
-        Feature::create(['key' => 'sites', 'name' => 'Sites', 'type' => FeatureType::INTEGER]);
-
-        $billable = new class { public int $id = 1; };
-
-        $reader = FeatureLimiter::for($billable);
+        $reader = $this->readerWithIntegerFeature();
 
         $reader->setUsage('sites', 7);
         $this->assertSame(7, $reader->usage('sites'));
@@ -120,9 +106,8 @@ class BillableUsageTest extends TestCase
 
     public function test_usage_throws_if_feature_does_not_exist(): void
     {
-        $billable = new class { public int $id = 1; };
-
-        $reader = FeatureLimiter::for($billable);
+        $billable = $this->flBillable(1);
+        $reader = $this->flReader($billable);
 
         $this->expectException(InvalidArgumentException::class);
         $reader->usage('unknown_feature');
@@ -130,11 +115,7 @@ class BillableUsageTest extends TestCase
 
     public function test_increment_usage_rejects_negative_amount(): void
     {
-        Feature::create(['key' => 'sites', 'name' => 'Sites', 'type' => FeatureType::INTEGER]);
-
-        $billable = new class { public int $id = 1; };
-
-        $reader = FeatureLimiter::for($billable);
+        $reader = $this->readerWithIntegerFeature();
 
         $this->expectException(InvalidArgumentException::class);
         $reader->incrementUsage('sites', -1);
@@ -142,11 +123,7 @@ class BillableUsageTest extends TestCase
 
     public function test_decrement_usage_rejects_negative_amount(): void
     {
-        Feature::create(['key' => 'sites', 'name' => 'Sites', 'type' => FeatureType::INTEGER]);
-
-        $billable = new class { public int $id = 1; };
-
-        $reader = FeatureLimiter::for($billable);
+        $reader = $this->readerWithIntegerFeature();
 
         $this->expectException(InvalidArgumentException::class);
         $reader->decrementUsage('sites', -1);
@@ -154,11 +131,7 @@ class BillableUsageTest extends TestCase
 
     public function test_set_usage_rejects_negative_value(): void
     {
-        Feature::create(['key' => 'sites', 'name' => 'Sites', 'type' => FeatureType::INTEGER]);
-
-        $billable = new class { public int $id = 1; };
-
-        $reader = FeatureLimiter::for($billable);
+        $reader = $this->readerWithIntegerFeature();
 
         $this->expectException(InvalidArgumentException::class);
         $reader->setUsage('sites', -10);

@@ -4,22 +4,10 @@ namespace MichaelLurquin\FeatureLimiter\Support;
 
 use Carbon\CarbonImmutable;
 use MichaelLurquin\FeatureLimiter\Models\Feature;
+use MichaelLurquin\FeatureLimiter\Enums\ResetPeriod;
 
 class PeriodResolver
 {
-    public function forFeature(Feature $feature): array
-    {
-        $period = $feature->reset_period ?? 'none';
-
-        return match ($period) {
-            'daily' => $this->daily(),
-            'monthly' => $this->monthly(),
-            'yearly' => $this->yearly(),
-            'none', null => $this->lifetime(),
-            default => $this->lifetime(), // none
-        };
-    }
-
     public function lifetime(): array
     {
         return [
@@ -28,31 +16,49 @@ class PeriodResolver
         ];
     }
 
-    public function daily(): array
+    public function forFeature(Feature $feature, ?CarbonImmutable $now = null): array
     {
-        $start = CarbonImmutable::now()->startOfDay();
-        $end = CarbonImmutable::now()->endOfDay();
+        $now ??= CarbonImmutable::now();
 
-        return [$start->toDateString(), $end->toDateString()];
+        $period = $this->normalizeResetPeriod($feature->reset_period);
+
+        return match ($period) {
+            'daily' => [
+                $now->startOfDay()->toDateString(),
+                $now->endOfDay()->toDateString(),
+            ],
+            'weekly' => [
+                $now->startOfWeek()->toDateString(),
+                $now->endOfWeek()->toDateString(),
+            ],
+            'monthly' => [
+                $now->startOfMonth()->toDateString(),
+                $now->endOfMonth()->toDateString(),
+            ],
+            'yearly' => [
+                $now->startOfYear()->toDateString(),
+                $now->endOfYear()->toDateString(),
+            ],
+            'none' => $this->lifetime(),
+            default => $this->lifetime(),
+        };
     }
 
-    public function monthly(): array
+    private function normalizeResetPeriod(mixed $value): string
     {
-        $now = CarbonImmutable::now();
+        // Enum cast
+        if ( $value instanceof ResetPeriod )
+        {
+            return $value->value; // 'none'|'daily'|'monthly'|'yearly'
+        }
 
-        return [
-            $now->startOfMonth()->toDateString(),
-            $now->endOfMonth()->toDateString(),
-        ];
-    }
+        // Raw string in DB
+        if ( is_string($value) && $value !== '' )
+        {
+            return strtolower(trim($value));
+        }
 
-    public function yearly(): array
-    {
-        $now = CarbonImmutable::now();
-
-        return [
-            $now->startOfYear()->toDateString(),
-            $now->endOfYear()->toDateString(),
-        ];
+        // Fallback config
+        return strtolower((string) config('feature-limiter.defaults.reset_period', 'none'));
     }
 }

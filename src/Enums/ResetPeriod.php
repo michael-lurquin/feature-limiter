@@ -8,6 +8,7 @@ enum ResetPeriod: string
 {
     case NONE = 'none';
     case DAILY = 'daily';
+    case WEEKLY = 'weekly';
     case MONTHLY = 'monthly';
     case YEARLY = 'yearly';
 
@@ -16,6 +17,7 @@ enum ResetPeriod: string
         return match ($value) {
             'none' => self::NONE,
             'daily' => self::DAILY,
+            'weekly' => self::WEEKLY,
             'monthly' => self::MONTHLY,
             'yearly' => self::YEARLY,
             default => throw new InvalidArgumentException("Invalid reset period: {$value}"),
