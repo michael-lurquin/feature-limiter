@@ -397,3 +397,7 @@ The pruning command gives you **full control** over how much history you keep.
 ## License
 
 MIT
+
+## Contributing
+
+See `CONTRIBUTING.md`.
