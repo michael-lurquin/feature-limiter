@@ -7,6 +7,7 @@ use MichaelLurquin\FeatureLimiter\Builders\PlanBuilder;
 use MichaelLurquin\FeatureLimiter\Builders\GrantBuilder;
 use MichaelLurquin\FeatureLimiter\Billing\BillingManager;
 use MichaelLurquin\FeatureLimiter\Builders\FeatureBuilder;
+use MichaelLurquin\FeatureLimiter\Readers\PlanCatalogReader;
 use MichaelLurquin\FeatureLimiter\Readers\PlanFeatureReader;
 use MichaelLurquin\FeatureLimiter\Readers\BillableFeatureReader;
 use MichaelLurquin\FeatureLimiter\Repositories\FeatureUsageRepository;
@@ -42,5 +43,11 @@ class FeatureLimiterManager
     public function for(mixed $billable): BillableFeatureReader
     {
         return new BillableFeatureReader($billable, $this->billing, $this->usages);
+    }
+
+    // Catalog
+    public function catalog(): PlanCatalogReader
+    {
+        return new PlanCatalogReader($this->billing);
     }
 }

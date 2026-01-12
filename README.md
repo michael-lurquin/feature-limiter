@@ -315,6 +315,34 @@ Usage is automatically grouped per period in the database.
 
 ---
 
+## Catalog (Pricing UI)
+
+FeatureLimiter can generate ready-to-render structures for your pricing pages.
+
+### Pricing cards (featured features)
+
+```php
+$cards = FeatureLimiter::catalog()->plansCards(
+    featured: ['sites', 'pages', 'storage', 'custom_code'],
+    onlyActivePlans: true,
+    provider: 'cashier', // optional
+);
+```
+
+### Full comparaison table (grouped)
+
+```php
+$table = FeatureLimiter::catalog()->comparisonTable(
+    onlyActivePlans: true,
+    onlyActiveFeatures: true,
+    provider: 'cashier', // optional
+);
+```
+
+The returned structure contains plan headers + grouped feature rows (by feature.group), perfect for building a pricing comparison table.
+
+---
+
 ## Pruning Old Feature Usages
 
 Over time, the `fl_feature_usages` table can grow significantly.
