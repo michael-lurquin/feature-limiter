@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit bootstrap="vendor/autoload.php" colors="true" stopOnFailure="false" failOnWarning="false" failOnRisky="false" cacheDirectory=".phpunit.cache">
+  <testsuites>
+    <testsuite name="FeatureLimiter Test Suite">
+      <directory suffix="Test.php">./tests</directory>
+    </testsuite>
+  </testsuites>
+  <php>
+    <env name="APP_ENV" value="testing"/>
+    <env name="CACHE_DRIVER" value="array"/>
+    <env name="QUEUE_CONNECTION" value="sync"/>
+    <env name="SESSION_DRIVER" value="array"/>
+    <env name="MAIL_MAILER" value="array"/>
+    <env name="DB_CONNECTION" value="testing"/>
+    <env name="TELESCOPE_ENABLED" value="false"/>
+  </php>
+</phpunit>
