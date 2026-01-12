@@ -2,34 +2,36 @@
 
 namespace MichaelLurquin\FeatureLimiter\Tests\Readers;
 
-use MichaelLurquin\FeatureLimiter\Models\Plan;
-use MichaelLurquin\FeatureLimiter\Models\Feature;
 use MichaelLurquin\FeatureLimiter\Tests\TestCase;
 use MichaelLurquin\FeatureLimiter\Enums\FeatureType;
 use MichaelLurquin\FeatureLimiter\Facades\FeatureLimiter;
+use MichaelLurquin\FeatureLimiter\Tests\Concerns\InteractsWithFeatureLimiter;
 
 class PlanCatalogReaderCardsTest extends TestCase
 {
+    use InteractsWithFeatureLimiter;
+
+    private function setupPlansAndFeatures(): void
+    {
+        $this->flPlan('starter', 'Starter', 1);
+        $this->flPlan('pro', 'Pro', 2);
+
+        $this->flFeature('sites', FeatureType::INTEGER, 'Sites', 1);
+        $this->flFeature('storage', FeatureType::STORAGE, 'Storage', 2);
+        $this->flFeature('custom_code', FeatureType::BOOLEAN, 'Custom code', 3);
+
+        $this->flGrantQuota('starter', 'sites', 3);
+        $this->flGrantValue('starter', 'storage', '1GB');
+        $this->flGrantEnabled('starter', 'custom_code', false);
+
+        $this->flGrantQuota('pro', 'sites', 25);
+        $this->flGrantValue('pro', 'storage', '10GB');
+        $this->flGrantEnabled('pro', 'custom_code', true);
+    }
+
     public function test_it_returns_plans_cards_with_featured_features(): void
     {
-        Plan::create(['key' => 'starter', 'name' => 'Starter', 'sort' => 1, 'active' => true]);
-        Plan::create(['key' => 'pro', 'name' => 'Pro', 'sort' => 2, 'active' => true]);
-
-        Feature::create(['key' => 'sites', 'name' => 'Sites', 'type' => FeatureType::INTEGER, 'sort' => 1, 'active' => true]);
-        Feature::create(['key' => 'storage', 'name' => 'Storage', 'type' => FeatureType::STORAGE, 'sort' => 2, 'active' => true]);
-        Feature::create(['key' => 'custom_code', 'name' => 'Custom code', 'type' => FeatureType::BOOLEAN, 'sort' => 3, 'active' => true]);
-
-        FeatureLimiter::grant('starter')->features([
-            'sites' => 3,
-            'storage' => '1GB',
-            'custom_code' => false,
-        ]);
-
-        FeatureLimiter::grant('pro')->features([
-            'sites' => 25,
-            'storage' => '10GB',
-            'custom_code' => true,
-        ]);
+        $this->setupPlansAndFeatures();
 
         $cards = FeatureLimiter::catalog()->plansCards(featured: ['sites', 'storage', 'custom_code']);
 

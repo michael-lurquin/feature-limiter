@@ -2,46 +2,29 @@
 
 namespace MichaelLurquin\FeatureLimiter\Tests\Readers;
 
-use MichaelLurquin\FeatureLimiter\Models\Plan;
-use MichaelLurquin\FeatureLimiter\Models\Feature;
 use MichaelLurquin\FeatureLimiter\Tests\TestCase;
 use MichaelLurquin\FeatureLimiter\Enums\FeatureType;
 use MichaelLurquin\FeatureLimiter\Facades\FeatureLimiter;
+use MichaelLurquin\FeatureLimiter\Tests\Concerns\InteractsWithFeatureLimiter;
 
 class PlanCatalogReaderComparisonTest extends TestCase
 {
-public function test_it_builds_a_grouped_comparison_table(): void
+    use InteractsWithFeatureLimiter;
+
+    public function test_it_builds_a_grouped_comparison_table(): void
     {
-        Plan::create(['key' => 'free', 'name' => 'Free', 'sort' => 0, 'active' => true]);
-        Plan::create(['key' => 'starter', 'name' => 'Starter', 'sort' => 1, 'active' => true]);
+        $this->flPlan('free', 'Free', 0);
 
-        Feature::create([
-            'key' => 'sites',
-            'name' => 'Sites',
-            'type' => FeatureType::INTEGER,
-            'group' => 'create-design',
-            'sort' => 1,
-            'active' => true,
-        ]);
+        $this->flPlan('starter', 'Starter', 1);
 
-        Feature::create([
-            'key' => 'custom_code',
-            'name' => 'Custom code',
-            'type' => FeatureType::BOOLEAN,
-            'group' => 'create-design',
-            'sort' => 2,
-            'active' => true,
-        ]);
+        $this->flFeature('sites', FeatureType::INTEGER, 'Sites', 1, group: 'create-design');
+        $this->flFeature('custom_code', FeatureType::BOOLEAN, 'Custom code', 2, group: 'create-design');
 
-        FeatureLimiter::grant('free')->features([
-            'sites' => 1,
-            'custom_code' => false,
-        ]);
+        $this->flGrantQuota('free', 'sites', 1);
+        $this->flGrantEnabled('free', 'custom_code', false);
 
-        FeatureLimiter::grant('starter')->features([
-            'sites' => 3,
-            'custom_code' => true,
-        ]);
+        $this->flGrantQuota('starter', 'sites', 3);
+        $this->flGrantEnabled('starter', 'custom_code', true);
 
         $table = FeatureLimiter::catalog()->comparisonTable();
 
