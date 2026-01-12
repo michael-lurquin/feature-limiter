@@ -1,17 +1,18 @@
 # Feature Limiter for Laravel
 
-A flexible **plan / feature / quota / usage** system for Laravel applications.
+A flexible **plan / feature / quota / usage** system for Laravel applications, with built-in helpers for **pricing pages** (cards & comparison tables).
 
 Supports:
 
-- Plan & Feature management  
-- Quotas per plan  
-- Usage tracking per billable (User, Tenant, Team, etc.)  
-- Unlimited features  
-- Storage units (e.g. `500MB`, `1GB`)  
-- Period-based resets (daily, weekly, monthly, yearly, lifetime)  
-- Transaction-safe consumption  
-- Pluggable billing providers (Cashier, manual, fake, etc.)  
+- Plan & Feature management
+- Quotas per plan
+- Usage tracking per billable (User, Tenant, Team, etc.)
+- Unlimited features
+- Storage units (e.g. `500MB`, `1GB`)
+- Period-based resets (daily, weekly, monthly, yearly, lifetime)
+- Transaction-safe consumption
+- Pluggable billing providers (Cashier, manual, fake, etc.)
+- Pricing catalog generation (cards & comparison tables)
 
 ---
 
