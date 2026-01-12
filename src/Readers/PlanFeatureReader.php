@@ -7,19 +7,35 @@ use MichaelLurquin\FeatureLimiter\Enums\FeatureType;
 
 class PlanFeatureReader
 {
+    private array $rawCache = [];
+
     public function __construct(protected Plan $plan) {}
 
     public function raw(string $featureKey): ?array
     {
+        if ( array_key_exists($featureKey, $this->rawCache) )
+        {
+            return $this->rawCache[$featureKey];
+        }
+
         $feature = $this->plan->features()->where('key', $featureKey)->first();
 
-        if ( !$feature ) return null;
+        if ( !$feature )
+        {
+            $this->rawCache[$featureKey] = null;
 
-        return [
+            return null;
+        }
+
+        $raw = [
             'type' => $feature->type, // enum FeatureType
             'value' => $feature->planFeature->value, // string|null
             'is_unlimited' => (bool) $feature->planFeature->is_unlimited,
         ];
+
+        $this->rawCache[$featureKey] = $raw;
+
+        return $raw;
     }
 
     public function quota(string $featureKey): int|string|null

@@ -15,30 +15,57 @@ use MichaelLurquin\FeatureLimiter\Repositories\FeatureUsageRepository;
 class BillableFeatureReader
 {
     protected ?string $providerName = null;
-    protected ?Plan $resolvePlan = null;
-    protected ?PlanFeatureReader $planReader = null;
+    private ?Plan $resolvedPlan = null;
+    private bool $planResolved = false;
+    private ?PlanFeatureReader $planReader = null;
+    private array $featureModelCache = [];
+    private array $featureRawCache = [];
 
     public function __construct(protected mixed $billable, protected BillingManager $billing, protected FeatureUsageRepository $usages) {}
 
     public function using(?string $providerName): self
     {
         $this->providerName = $providerName;
-        $this->resolvePlan = null;
+        $this->resolvedPlan = null;
+        $this->planResolved = false;
         $this->planReader = null;
+        $this->featureModelCache = [];
+        $this->featureRawCache = [];
 
         return $this;
     }
 
     public function plan(): ?Plan
     {
-        return $this->billing->provider($this->providerName)->resolvePlanFor($this->billable);
+        return $this->getPlan();
     }
 
     protected function planOrFail(): Plan
     {
-        if ( $this->resolvePlan ) return $this->resolvePlan;
+        return $this->planOrFailCached();
+    }
 
-        $plan = $this->plan();
+    protected function planFeatureReader(): PlanFeatureReader
+    {
+        return $this->planReader();
+    }
+
+    private function getPlan(): ?Plan
+    {
+        if ( $this->planResolved )
+        {
+            return $this->resolvedPlan;
+        }
+
+        $this->resolvedPlan = $this->billing->provider($this->providerName)->resolvePlanFor($this->billable);
+        $this->planResolved = true;
+
+        return $this->resolvedPlan;
+    }
+
+    private function planOrFailCached(): Plan
+    {
+        $plan = $this->getPlan();
 
         if ( !$plan )
         {
@@ -47,19 +74,17 @@ class BillableFeatureReader
             throw new InvalidArgumentException("No plan resolved for billable: {$type}");
         }
 
-        $this->resolvePlan = $plan;
-
         return $plan;
     }
 
-    protected function planFeatureReader(): PlanFeatureReader
+    private function planReader(): PlanFeatureReader
     {
         if ( $this->planReader )
         {
             return $this->planReader;
         }
 
-        $this->planReader = new PlanFeatureReader($this->planOrFail());
+        $this->planReader = new PlanFeatureReader($this->planOrFailCached());
 
         return $this->planReader;
     }
@@ -72,7 +97,19 @@ class BillableFeatureReader
 
     public function enabled(string $featureKey): bool
     {
-        return $this->planFeatureReader()->enabled($featureKey);
+        $feature = $this->refreshFeatureCache($featureKey);
+
+        if ( !$feature )
+        {
+            return false;
+        }
+
+        if ( $feature->type !== FeatureType::BOOLEAN )
+        {
+            return false;
+        }
+
+        return $feature->planFeature?->value === '1';
     }
 
     public function disabled(string $featureKey): bool
@@ -119,9 +156,17 @@ class BillableFeatureReader
     // Quota (plan - usage)
     public function raw(string $featureKey): ?Feature
     {
-        $plan = $this->planOrFail();
+        if ( array_key_exists($featureKey, $this->featureModelCache) )
+        {
+            return $this->featureModelCache[$featureKey];
+        }
 
-        return $plan->features()->where('key', $featureKey)->first();
+        $plan = $this->planOrFailCached();
+
+        $feature = $plan->features()->where('key', $featureKey)->first();
+        $this->featureModelCache[$featureKey] = $feature;
+
+        return $feature;
     }
 
     /**
@@ -945,6 +990,15 @@ class BillableFeatureReader
     public function remainingQuotaMany(array $features): array
     {
         $out = [];
+        $keys = [];
+
+        foreach ($features as $key => $value)
+        {
+            $featureKey = is_int($key) ? (string) $value : (string) $key;
+            $keys[$featureKey] = true;
+        }
+
+        $this->primeFeatureModelCache(array_keys($keys));
 
         foreach ($features as $key => $value)
         {
@@ -979,6 +1033,15 @@ class BillableFeatureReader
     {
         // Normalize to map: featureKey => aggregated amount
         $map = [];
+        $keys = [];
+
+        foreach ($features as $key => $value)
+        {
+            $featureKey = is_int($key) ? (string) $value : (string) $key;
+            $keys[$featureKey] = true;
+        }
+
+        $this->primeFeatureRawCache(array_keys($keys));
 
         foreach ($features as $key => $value)
         {
@@ -998,7 +1061,7 @@ class BillableFeatureReader
             // - INTEGER: sum ints
             // - STORAGE: sum bytes
             // - BOOLEAN: keep as 1 (or last), it’s just enabled check
-            $raw = $this->planFeatureReader()->raw($featureKey);
+            $raw = $this->rawFeatureData($featureKey);
 
             if ( !$raw )
             {
@@ -1083,5 +1146,127 @@ class BillableFeatureReader
         }
 
         return true;
+    }
+
+    private function rawFeatureData(string $featureKey): ?array
+    {
+        if ( array_key_exists($featureKey, $this->featureRawCache) )
+        {
+            $cached = $this->featureRawCache[$featureKey];
+
+            if ( is_array($cached) && ($cached['type'] ?? null) === FeatureType::BOOLEAN )
+            {
+                $this->refreshFeatureCache($featureKey);
+
+                return $this->featureRawCache[$featureKey];
+            }
+
+            return $cached;
+        }
+
+        $feature = $this->raw($featureKey);
+
+        if ( !$feature )
+        {
+            $this->featureRawCache[$featureKey] = null;
+
+            return null;
+        }
+
+        $raw = [
+            'type' => $feature->type,
+            'value' => $feature->planFeature?->value,
+            'is_unlimited' => (bool) $feature->planFeature?->is_unlimited,
+        ];
+
+        $this->featureRawCache[$featureKey] = $raw;
+
+        return $raw;
+    }
+
+    private function primeFeatureModelCache(array $keys): void
+    {
+        $missing = array_values(array_filter($keys, fn ($key) => !array_key_exists($key, $this->featureModelCache)));
+
+        if ( empty($missing) )
+        {
+            return;
+        }
+
+        $plan = $this->planOrFailCached();
+        $features = $plan->features()->whereIn('key', $missing)->get();
+
+        foreach ($features as $feature)
+        {
+            $this->featureModelCache[$feature->key] = $feature;
+        }
+
+        $found = $features->pluck('key')->all();
+
+        foreach ($missing as $key)
+        {
+            if ( !in_array($key, $found, true) )
+            {
+                $this->featureModelCache[$key] = null;
+            }
+        }
+    }
+
+    private function primeFeatureRawCache(array $keys): void
+    {
+        $missing = array_values(array_filter($keys, fn ($key) => !array_key_exists($key, $this->featureRawCache)));
+
+        if ( empty($missing) )
+        {
+            return;
+        }
+
+        $plan = $this->planOrFailCached();
+        $features = $plan->features()->whereIn('key', $missing)->get();
+
+        foreach ($features as $feature)
+        {
+            $raw = [
+                'type' => $feature->type,
+                'value' => $feature->planFeature?->value,
+                'is_unlimited' => (bool) $feature->planFeature?->is_unlimited,
+            ];
+            $this->featureRawCache[$feature->key] = $raw;
+            $this->featureModelCache[$feature->key] = $feature;
+
+            if ( $feature->type === FeatureType::BOOLEAN )
+            {
+                unset($this->featureRawCache[$feature->key]);
+                unset($this->featureModelCache[$feature->key]);
+            }
+        }
+
+        $found = $features->pluck('key')->all();
+
+        foreach ($missing as $key)
+        {
+            if ( !in_array($key, $found, true) )
+            {
+                $this->featureRawCache[$key] = null;
+                $this->featureModelCache[$key] = null;
+            }
+        }
+    }
+
+    private function refreshFeatureCache(string $featureKey): ?Feature
+    {
+        $plan = $this->planOrFailCached();
+        $feature = $plan->features()->where('key', $featureKey)->first();
+
+        $this->featureModelCache[$featureKey] = $feature;
+        $this->featureRawCache[$featureKey] = $feature ? [
+            'type' => $feature->type,
+            'value' => $feature->planFeature?->value,
+            'is_unlimited' => (bool) $feature->planFeature?->is_unlimited,
+        ] : null;
+
+        $this->planReader = null;
+
+        return $feature;
     }
 }

@@ -153,7 +153,7 @@ FeatureLimiter::grant('pro')->features([
 ## Reading Plan Quotas
 
 ```php
-FeatureLimiter::viewPlan('starter')->limit('sites');
+FeatureLimiter::viewPlan('starter')->quota('sites');
 FeatureLimiter::viewPlan('starter')->enabled('custom_code');
 FeatureLimiter::viewPlan('starter')->disabled('custom_code');
 FeatureLimiter::viewPlan('pro')->unlimited('storage');
@@ -187,7 +187,7 @@ FeatureLimiter::for($billable)->clearUsage('sites');
 ### Consuming quota (non-strict)
 
 ```php
-$result = FeatureLimiter::for($billable)->consume('sites', 1);
+FeatureLimiter::for($billable)->consume('sites', 1);
 // returns false if not enough quota
 ```
 
