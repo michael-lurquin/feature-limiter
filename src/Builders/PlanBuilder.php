@@ -2,10 +2,13 @@
 
 namespace MichaelLurquin\FeatureLimiter\Builders;
 
+use MichaelLurquin\FeatureLimiter\Builders\Concerns\UsesBuilderAttributes;
 use MichaelLurquin\FeatureLimiter\Models\Plan;
 
 class PlanBuilder
 {
+    use UsesBuilderAttributes;
+
     public function __construct(protected string $key, protected array $attributes = []) {}
 
     public function name(string $name): self
@@ -33,10 +36,7 @@ class PlanBuilder
     {
         $plan = Plan::query()->firstOrNew(['key' => $this->key]);
 
-        if ( !empty($this->attributes) )
-        {
-            $plan->fill($this->attributes);
-        }
+        $this->fillAttributes($plan);
 
         $plan->save();
 

@@ -4,11 +4,14 @@ namespace MichaelLurquin\FeatureLimiter\Builders;
 
 use InvalidArgumentException;
 use MichaelLurquin\FeatureLimiter\Models\Plan;
-use MichaelLurquin\FeatureLimiter\Models\Feature;
-use MichaelLurquin\FeatureLimiter\Support\FeatureValueParser;
+use MichaelLurquin\FeatureLimiter\Builders\Concerns\ResolvesPlanAndFeatures;
+use MichaelLurquin\FeatureLimiter\Builders\Concerns\UsesFeatureValueParser;
 
 class GrantFeatureBuilder
 {
+    use ResolvesPlanAndFeatures;
+    use UsesFeatureValueParser;
+
     protected mixed $rawValue = null;
     protected bool $isUnlimited = false;
 
@@ -62,23 +65,10 @@ class GrantFeatureBuilder
 
     public function save(): Plan
     {
-        $plan = Plan::query()->where('key', $this->planKey)->first();
+        $plan = $this->requirePlan($this->planKey);
+        $feature = $this->requireFeature($this->featureKey);
 
-        if ( !$plan )
-        {
-            throw new InvalidArgumentException("Plan not found: {$this->planKey}");
-        }
-
-        $feature = Feature::query()->where('key', $this->featureKey)->first();
-
-        if ( !$feature )
-        {
-            throw new InvalidArgumentException("Feature not found: {$this->featureKey}");
-        }
-
-        $parser = new FeatureValueParser();
-
-        [$value, $isUnlimited] = $parser->parse($feature, $this->rawValue, $this->isUnlimited);
+        [$value, $isUnlimited] = $this->featureValueParser()->parse($feature, $this->rawValue, $this->isUnlimited);
 
         $plan->features()->syncWithoutDetaching([
             $feature->id => [

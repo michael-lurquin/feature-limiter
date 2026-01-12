@@ -18,7 +18,14 @@ class PlanFeatureReader
             return $this->rawCache[$featureKey];
         }
 
-        $feature = $this->plan->features()->where('key', $featureKey)->first();
+        if ( $this->plan->relationLoaded('features') )
+        {
+            $feature = $this->plan->features->firstWhere('key', $featureKey);
+        }
+        else
+        {
+            $feature = $this->plan->features()->where('key', $featureKey)->first();
+        }
 
         if ( !$feature )
         {

@@ -2,39 +2,24 @@
 
 namespace MichaelLurquin\FeatureLimiter\Builders;
 
-use InvalidArgumentException;
 use MichaelLurquin\FeatureLimiter\Models\Plan;
-use MichaelLurquin\FeatureLimiter\Models\Feature;
-use MichaelLurquin\FeatureLimiter\Support\FeatureValueParser;
+use MichaelLurquin\FeatureLimiter\Builders\Concerns\ResolvesPlanAndFeatures;
+use MichaelLurquin\FeatureLimiter\Builders\Concerns\UsesFeatureValueParser;
 
 class GrantFeaturesBuilder
 {
+    use ResolvesPlanAndFeatures;
+    use UsesFeatureValueParser;
+
     public function __construct(protected string $planKey, protected array $featuresMap) {}
 
     public function save(): Plan
     {
-        $plan = Plan::query()->where('key', $this->planKey)->first();
-
-        if ( !$plan )
-        {
-            throw new InvalidArgumentException("Plan not found: {$this->planKey}");
-        }
+        $plan = $this->requirePlan($this->planKey);
 
         $keys = array_keys($this->featuresMap);
 
-        $features = Feature::query()
-            ->whereIn('key', $keys)
-            ->get()
-            ->keyBy('key');
-
-        $missing = array_values(array_diff($keys, $features->keys()->all()));
-
-        if ( !empty($missing) )
-        {
-            throw new InvalidArgumentException('Features not found: ' . implode(', ', $missing));
-        }
-
-        $parser = new FeatureValueParser();
+        $features = $this->requireFeatures($keys);
 
         $sync = [];
 
@@ -42,7 +27,7 @@ class GrantFeaturesBuilder
         {
             $feature = $features[$featureKey];
 
-            [$value, $isUnlimited] = $parser->parse($feature, $rawValue);
+            [$value, $isUnlimited] = $this->featureValueParser()->parse($feature, $rawValue);
 
             $sync[$feature->id] = [
                 'value' => $value,

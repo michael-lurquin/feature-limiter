@@ -3,12 +3,15 @@
 namespace MichaelLurquin\FeatureLimiter\Builders;
 
 use InvalidArgumentException;
+use MichaelLurquin\FeatureLimiter\Builders\Concerns\UsesBuilderAttributes;
 use MichaelLurquin\FeatureLimiter\Models\Feature;
 use MichaelLurquin\FeatureLimiter\Enums\FeatureType;
 use MichaelLurquin\FeatureLimiter\Enums\ResetPeriod;
 
 class FeatureBuilder
 {
+    use UsesBuilderAttributes;
+
     public function __construct(protected string $key, protected array $attributes = []) {}
 
     public function name(string $name): self
@@ -89,15 +92,12 @@ class FeatureBuilder
 
     public function save(): Feature
     {
-        $plan = Feature::query()->firstOrNew(['key' => $this->key]);
+        $feature = Feature::query()->firstOrNew(['key' => $this->key]);
 
-        if ( !empty($this->attributes) )
-        {
-            $plan->fill($this->attributes);
-        }
+        $this->fillAttributes($feature);
 
-        $plan->save();
+        $feature->save();
 
-        return $plan;
+        return $feature;
     }
 }

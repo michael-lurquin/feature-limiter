@@ -8,11 +8,18 @@ use MichaelLurquin\FeatureLimiter\Contracts\BillingProvider;
 
 class BillingManager
 {
+    private array $providers = [];
+
     public function __construct(protected Container $app) {}
 
     public function driver(?string $name = null): BillingProvider
     {
         $name ??= config('feature-limiter.billing.default', 'cashier');
+
+        if ( isset($this->providers[$name]) )
+        {
+            return $this->providers[$name];
+        }
 
         $class = config("feature-limiter.billing.providers.{$name}");
 
@@ -27,6 +34,8 @@ class BillingManager
         {
             throw new InvalidArgumentException("Billing provider [{$name}] must implement BillingProvider.");
         }
+
+        $this->providers[$name] = $provider;
 
         return $provider;
     }

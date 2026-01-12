@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\DB;
 use MichaelLurquin\FeatureLimiter\Models\Plan;
 use MichaelLurquin\FeatureLimiter\Models\Feature;
 use MichaelLurquin\FeatureLimiter\Support\Storage;
+use MichaelLurquin\FeatureLimiter\Support\UsageAmountParser;
 use MichaelLurquin\FeatureLimiter\Enums\FeatureType;
 use MichaelLurquin\FeatureLimiter\Billing\BillingManager;
 use MichaelLurquin\FeatureLimiter\Exceptions\QuotaExceededException;
@@ -20,6 +21,7 @@ class BillableFeatureReader
     private ?PlanFeatureReader $planReader = null;
     private array $featureModelCache = [];
     private array $featureRawCache = [];
+    private ?UsageAmountParser $amountParser = null;
 
     public function __construct(protected mixed $billable, protected BillingManager $billing, protected FeatureUsageRepository $usages) {}
 
@@ -87,6 +89,18 @@ class BillableFeatureReader
         $this->planReader = new PlanFeatureReader($this->planOrFailCached());
 
         return $this->planReader;
+    }
+
+    private function amountParser(): UsageAmountParser
+    {
+        if ( $this->amountParser )
+        {
+            return $this->amountParser;
+        }
+
+        $this->amountParser = new UsageAmountParser();
+
+        return $this->amountParser;
     }
 
     // Plan (quota)
@@ -284,7 +298,7 @@ class BillableFeatureReader
 
         if ( !is_int($remaining) ) return false;
 
-        $n = is_int($amount) ? $amount : ( ctype_digit(trim((string)$amount) ) ? (int) trim((string)$amount) : null );
+        $n = $this->amountParser()->parsePositiveInt($amount);
 
         if ( $n === null || $n < 0 ) return false;
 
@@ -312,9 +326,9 @@ class BillableFeatureReader
 
             $remainingBytes = max(0, $quotaBytes - $usedBytes);
 
-            $needBytes = is_int($amount) ? $amount : Storage::toBytes((string) $amount);
+            $needBytes = $this->amountParser()->parsePositiveBytes($amount);
 
-            if ( $needBytes < 0 ) return false;
+            if ( $needBytes === null || $needBytes < 0 ) return false;
 
             return $needBytes <= $remainingBytes;
         }
@@ -352,7 +366,7 @@ class BillableFeatureReader
         if ( empty($map) ) return [];
 
         // Filter out explicit zero amounts (they're always allowed and do nothing)
-        $map = array_filter($map, fn ($v) => !$this->isZeroAmount($v));
+        $map = array_filter($map, fn ($v) => !$this->amountParser()->isZeroAmount($v));
 
         if ( empty($map) ) return [];
 
@@ -547,40 +561,19 @@ class BillableFeatureReader
      */
     private function amountToDeltaOrFail(FeatureType $type, int|string $amount, string $featureKey, bool $strict): int
     {
-        if ( $type === FeatureType::INTEGER )
+        $delta = $this->amountParser()->toDelta($type, $amount);
+
+        if ( $delta === null )
         {
-            $n = $this->parsePositiveInt($amount);
-
-            if ( $n === null )
+            if ( $strict )
             {
-                if ( $strict)
-                {
-                    throw new QuotaExceededException($featureKey, $amount, null);
-                }
-
-                return 0;
-            }
-            return $n;
-        }
-
-        if ( $type === FeatureType::STORAGE )
-        {
-            $bytes = $this->parsePositiveBytes($amount);
-
-            if ( $bytes === null )
-            {
-                if ( $strict )
-                {
-                    throw new QuotaExceededException($featureKey, $amount, null);
-                }
-
-                return 0;
+                throw new QuotaExceededException($featureKey, $amount, null);
             }
 
-            return $bytes;
+            return 0;
         }
 
-        return 0;
+        return $delta;
     }
 
     /**
@@ -599,7 +592,7 @@ class BillableFeatureReader
     public function consumeUsage(string $featureKey, int|string $amount = 1, bool $strict = false): int|false
     {
         // amount=0 => no-op
-        if ( $this->isZeroAmount($amount) )
+        if ( $this->amountParser()->isZeroAmount($amount) )
         {
             return $this->usage($featureKey);
         }
@@ -624,7 +617,7 @@ class BillableFeatureReader
             // Boolean: no usage tracking by default, just check enabled
             if ( $feature->type === FeatureType::BOOLEAN )
             {
-                $allowed = $this->enabled($featureKey) || $this->isZeroAmount($amount);
+                $allowed = $this->enabled($featureKey) || $this->amountParser()->isZeroAmount($amount);
 
                 if ( !$allowed )
                 {
@@ -738,80 +731,19 @@ class BillableFeatureReader
 
     private function amountToDelta(FeatureType $type, int|string $amount, bool $strict, string $featureKey): ?int
     {
-        if ( $type === FeatureType::INTEGER )
+        $delta = $this->amountParser()->toDelta($type, $amount);
+
+        if ( $delta === null )
         {
-            $n = $this->parsePositiveInt($amount);
-
-            if ( $n === null )
+            if ( $strict )
             {
-                if ( $strict )
-                {
-                    throw new QuotaExceededException($featureKey, $amount, null);
-                }
-
-                return null;
+                throw new QuotaExceededException($featureKey, $amount, null);
             }
 
-            return $n;
-        }
-
-        if ( $type === FeatureType::STORAGE )
-        {
-            $bytes = $this->parsePositiveBytes($amount);
-
-            if ( $bytes === null )
-            {
-                if ( $strict )
-                {
-                    throw new QuotaExceededException($featureKey, $amount, null);
-                }
-
-                return null;
-            }
-
-            return $bytes;
-        }
-
-        return 0;
-    }
-
-    private function parsePositiveInt(int|string $amount): ?int
-    {
-        if ( is_int($amount) )
-        {
-            return $amount >= 0 ? $amount : null;
-        }
-
-        $s = trim((string) $amount);
-
-        if ( $s === '' ) return null;
-
-        if ( !ctype_digit($s) ) return null;
-
-        return (int) $s;
-    }
-
-    private function parsePositiveBytes(int|string $amount): ?int
-    {
-        try
-        {
-            $bytes = is_int($amount) ? $amount : Storage::toBytes((string) $amount);
-        }
-        catch (\Throwable)
-        {
             return null;
         }
 
-        return $bytes >= 0 ? $bytes : null;
-    }
-
-    private function isZeroAmount(int|string $amount): bool
-    {
-        if ( is_int($amount) ) return $amount === 0;
-
-        $s = trim((string) $amount);
-
-        return $s === '0' || $s === '0B' || $s === '0KB' || $s === '0MB' || $s === '0GB';
+        return $delta;
     }
 
     public function refund(string $featureKey, int|string $amount = 1, bool $strict = false): int|false
@@ -827,7 +759,7 @@ class BillableFeatureReader
      */
     public function refundUsage(string $featureKey, int|string $amount = 1, bool $strict = false): int|false
     {
-        if ( $this->isZeroAmount($amount) )
+        if ( $this->amountParser()->isZeroAmount($amount) )
         {
             return $this->usage($featureKey);
         }
@@ -889,7 +821,7 @@ class BillableFeatureReader
     {
         if ( empty($map)) return [];
 
-        $map = array_filter($map, fn ($v) => !$this->isZeroAmount($v));
+        $map = array_filter($map, fn ($v) => !$this->amountParser()->isZeroAmount($v));
 
         if ( empty($map) ) return [];
 
@@ -1089,7 +1021,7 @@ class BillableFeatureReader
 
             if ( $raw['type'] === FeatureType::INTEGER )
             {
-                $n = is_int($amount) ? $amount : (ctype_digit(trim((string)$amount)) ? (int) trim((string)$amount) : null);
+                $n = $this->amountParser()->parsePositiveInt($amount);
 
                 if ( $n === null || $n < 0 )
                 {
@@ -1105,14 +1037,7 @@ class BillableFeatureReader
 
             if ( $raw['type'] === FeatureType::STORAGE )
             {
-                try
-                {
-                    $bytes = is_int($amount) ? $amount : Storage::toBytes((string) $amount);
-                }
-                catch (\Throwable)
-                {
-                    $bytes = null;
-                }
+                $bytes = $this->amountParser()->parsePositiveBytes($amount);
 
                 if ( $bytes === null || $bytes < 0 )
                 {

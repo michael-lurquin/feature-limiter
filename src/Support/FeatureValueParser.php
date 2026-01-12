@@ -13,32 +13,11 @@ class FeatureValueParser
      */
     public function parse(Feature $feature, mixed $raw, bool $forceUnlimited = false): array
     {
-        // Forced unlimited (from builder::unlimited())
-        if ( $forceUnlimited )
-        {
-            $this->assertNotBooleanUnlimited($feature);
-            return [null, true];
-        }
+        $unlimited = $this->parseUnlimited($feature, $raw, $forceUnlimited);
 
-        // String "unlimited"
-        if ( is_string($raw) && strtolower(trim($raw)) === 'unlimited' )
+        if ( $unlimited !== null )
         {
-            $this->assertNotBooleanUnlimited($feature);
-            return [null, true];
-        }
-
-        // null = unlimited
-        if ( $raw === null )
-        {
-            $this->assertNotBooleanUnlimited($feature);
-            return [null, true];
-        }
-
-        // -1 = unlimited
-        if ( $raw === -1 )
-        {
-            $this->assertNotBooleanUnlimited($feature);
-            return [null, true];
+            return $unlimited;
         }
 
         return match ($feature->type) {
@@ -46,6 +25,35 @@ class FeatureValueParser
             FeatureType::INTEGER => [$this->parseInteger($feature->key, $raw), false],
             FeatureType::STORAGE => [$this->parseStorage($feature->key, $raw), false],
         };
+    }
+
+    private function parseUnlimited(Feature $feature, mixed $raw, bool $forceUnlimited): ?array
+    {
+        if ( $forceUnlimited )
+        {
+            $this->assertNotBooleanUnlimited($feature);
+            return [null, true];
+        }
+
+        if ( is_string($raw) && strtolower(trim($raw)) === 'unlimited' )
+        {
+            $this->assertNotBooleanUnlimited($feature);
+            return [null, true];
+        }
+
+        if ( $raw === null )
+        {
+            $this->assertNotBooleanUnlimited($feature);
+            return [null, true];
+        }
+
+        if ( $raw === -1 )
+        {
+            $this->assertNotBooleanUnlimited($feature);
+            return [null, true];
+        }
+
+        return null;
     }
 
     protected function assertNotBooleanUnlimited(Feature $feature): void
