@@ -2,8 +2,8 @@
 
 namespace MichaelLurquin\FeatureLimiter\Builders;
 
-use MichaelLurquin\FeatureLimiter\Builders\Concerns\UsesBuilderAttributes;
 use MichaelLurquin\FeatureLimiter\Models\Plan;
+use MichaelLurquin\FeatureLimiter\Builders\Concerns\UsesBuilderAttributes;
 
 class PlanBuilder
 {
@@ -36,7 +36,9 @@ class PlanBuilder
     {
         $plan = Plan::query()->firstOrNew(['key' => $this->key]);
 
-        $this->fillAttributes($plan);
+        if ( empty($this->attributes['name']) ) $this->attributes['name'] = ucfirst($this->key);
+
+        $plan->fill($this->attributes);
 
         $plan->save();
 

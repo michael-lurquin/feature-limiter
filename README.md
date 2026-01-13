@@ -58,7 +58,7 @@ Short version:
 
 ```php
 FeatureLimiter::plan('starter')
-    ->name('Starter')
+    ->name('Starter') // Optional (ucfirst on 'key' column : starter => Starter)
     ->save();
 ```
 
@@ -83,7 +83,7 @@ Short version:
 
 ```php
 FeatureLimiter::feature('sites')
-    ->name('Sites')
+    ->name('Sites') // Optional (ucfirst on 'key' column : sites => Sites)
     ->type(FeatureType::INTEGER)
     ->save();
 ```

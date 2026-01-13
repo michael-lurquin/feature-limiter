@@ -3,10 +3,10 @@
 namespace MichaelLurquin\FeatureLimiter\Builders;
 
 use InvalidArgumentException;
-use MichaelLurquin\FeatureLimiter\Builders\Concerns\UsesBuilderAttributes;
 use MichaelLurquin\FeatureLimiter\Models\Feature;
 use MichaelLurquin\FeatureLimiter\Enums\FeatureType;
 use MichaelLurquin\FeatureLimiter\Enums\ResetPeriod;
+use MichaelLurquin\FeatureLimiter\Builders\Concerns\UsesBuilderAttributes;
 
 class FeatureBuilder
 {
@@ -94,7 +94,9 @@ class FeatureBuilder
     {
         $feature = Feature::query()->firstOrNew(['key' => $this->key]);
 
-        $this->fillAttributes($feature);
+        if ( empty($this->attributes['label']) ) $this->attributes['label'] = ucfirst($this->key);
+
+        $feature->fill($this->attributes);
 
         $feature->save();
 

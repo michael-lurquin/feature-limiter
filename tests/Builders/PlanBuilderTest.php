@@ -11,7 +11,7 @@ class PlanBuilderTest extends TestCase
     public function test_it_creates_a_plan_with_minimal_syntax(): void
     {
         $plan = FeatureLimiter::plan('starter')
-            ->name('Starter')
+            ->name('Starter') // Optional
             ->save();
 
         $this->assertInstanceOf(Plan::class, $plan);

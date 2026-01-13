@@ -24,7 +24,7 @@ return new class extends Migration
             $table->boolean('active')->default(true);
             $table->timestamps();
 
-            $table->index(['active', 'sort', 'provider', 'provider_monthly_id', 'provider_yearly_id']);
+            $table->index(['active', 'sort', 'provider', 'provider_monthly_id', 'provider_yearly_id'], 'fl_plans_active_sort_and_provider_index');
         });
     }
 
