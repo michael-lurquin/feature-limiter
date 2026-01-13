@@ -62,6 +62,30 @@ FeatureLimiter::plan('starter')
     ->save();
 ```
 
+### Multiple plans:
+
+```php
+FeatureLimiter::plans([
+    'free' => ['sort' => 0],
+    'starter' => ['sort' => 1],
+    'comfort' => ['sort' => 2],
+    'pro' => ['name' => 'Gold', 'sort' => 3],
+    'enterprise' => ['sort' => 4, 'active' => false],
+])->save();
+```
+
+Sort version:
+
+```php
+FeatureLimiter::plans([
+    'free',
+    'starter',
+    'comfort',
+    'pro',
+    'enterprise',
+])->save();
+```
+
 ---
 
 ## Creating Features
@@ -93,6 +117,26 @@ Supported feature types:
 - `FeatureType::INTEGER`
 - `FeatureType::BOOLEAN`
 - `FeatureType::STORAGE`
+
+### Multiple features:
+
+```php
+FeatureLimiter::features([
+    'sites' => ['sort' => 0, 'type' => FeatureType::INTEGER],
+    'storage' => ['sort' => 1, 'type' => FeatureType::STORAGE],
+    'custom_code' => ['name' => 'Custom Code', 'type' => FeatureType::BOOLEAN, 'sort' => 2],
+])->save();
+```
+
+Short version:
+
+```php
+FeatureLimiter::features([
+    'sites' => ['type' => FeatureType::INTEGER],
+    'storage' => ['type' => FeatureType::STORAGE],
+    'custom_code' => ['name' => 'Custom Code', 'type' => FeatureType::BOOLEAN],
+])->save();
+```
 
 ---
 

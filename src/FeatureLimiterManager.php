@@ -5,8 +5,10 @@ namespace MichaelLurquin\FeatureLimiter;
 use MichaelLurquin\FeatureLimiter\Models\Plan;
 use MichaelLurquin\FeatureLimiter\Builders\PlanBuilder;
 use MichaelLurquin\FeatureLimiter\Builders\GrantBuilder;
+use MichaelLurquin\FeatureLimiter\Builders\PlansBuilder;
 use MichaelLurquin\FeatureLimiter\Billing\BillingManager;
 use MichaelLurquin\FeatureLimiter\Builders\FeatureBuilder;
+use MichaelLurquin\FeatureLimiter\Builders\FeaturesBuilder;
 use MichaelLurquin\FeatureLimiter\Readers\PlanCatalogReader;
 use MichaelLurquin\FeatureLimiter\Readers\PlanFeatureReader;
 use MichaelLurquin\FeatureLimiter\Readers\BillableFeatureReader;
@@ -22,9 +24,19 @@ class FeatureLimiterManager
         return new PlanBuilder($key);
     }
 
+    public function plans(array $plans): PlansBuilder
+    {
+        return new PlansBuilder($plans);
+    }
+
     public function feature(string $key): FeatureBuilder
     {
         return new FeatureBuilder($key);
+    }
+
+    public function features(array $features): FeaturesBuilder
+    {
+        return new FeaturesBuilder($features);
     }
 
     public function grant(string|Plan $plan): GrantBuilder
