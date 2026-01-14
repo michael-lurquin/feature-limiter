@@ -386,6 +386,59 @@ $table = FeatureLimiter::catalog()->comparisonTable(
 
 The returned structure contains plan headers + grouped feature rows (by feature.group), perfect for building a pricing comparison table.
 
+## Pricing (optional)
+
+FeatureLimiter can optionally fetch and expose plan prices through a billing provider (e.g. Stripe via Cashier).
+
+### 1) Catalog output (cards / comparison table)
+
+By default, catalogs do **not** include prices (no external provider calls):
+
+```php
+FeatureLimiter::catalog()->plansCards(['site', 'page', 'storage', 'banner', 'cms', 'collection']);
+FeatureLimiter::catalog()->comparisonTable();
+```
+
+If you want prices, explicitly enable them:
+
+```php
+FeatureLimiter::catalog()
+    ->includePrices()
+    ->plansCards(['site', 'page', 'storage', 'banner', 'cms', 'collection']);
+
+FeatureLimiter::catalog()
+    ->includePrices()
+    ->comparisonTable();
+```
+
+### 2) Single plan
+
+By default, viewPlan() returns the plan reader without prices:
+
+```php
+FeatureLimiter::viewPlan('free');
+```
+
+To fetch prices for a specific plan:
+
+```php
+FeatureLimiter::viewPlan('free')->prices();
+```
+
+### 3) Billable plan
+
+By default, resolving the billable plan does not fetch prices:
+
+```php
+FeatureLimiter::for($billable)->plan();
+```
+
+To fetch prices for the resolved plan:
+
+```php
+FeatureLimiter::for($billable)->plan()->prices();
+```
+
 ---
 
 ## Pruning Old Feature Usages

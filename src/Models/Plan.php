@@ -4,6 +4,7 @@ namespace MichaelLurquin\FeatureLimiter\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use MichaelLurquin\FeatureLimiter\Billing\BillingManager;
 
 class Plan extends Model
 {
@@ -33,5 +34,14 @@ class Plan extends Model
             ->using(PlanFeature::class)
             ->as('planFeature')
             ->withPivot(['value', 'is_unlimited']);
+    }
+
+    public function prices(): array
+    {
+        $provider = $this->provider ?: null;
+
+        $billing = app(BillingManager::class);
+
+        return $billing->provider($provider)->pricesFor($this);
     }
 }

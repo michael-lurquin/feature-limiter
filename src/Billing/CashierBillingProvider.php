@@ -2,12 +2,20 @@
 
 namespace MichaelLurquin\FeatureLimiter\Billing;
 
+use RuntimeException;
+use Stripe\StripeClient;
+use Illuminate\Support\Facades\Cache;
 use MichaelLurquin\FeatureLimiter\Models\Plan;
 use MichaelLurquin\FeatureLimiter\Contracts\BillingProvider;
 
 class CashierBillingProvider implements BillingProvider
 {
-    public function __construct(protected string $subscriptionName = 'default', protected ?string $defaultPlanKey = 'free') {}
+    public function __construct(
+        protected string $subscriptionName = 'default', 
+        protected ?string $defaultPlanKey = 'free',
+        protected ?StripeClient $stripe = null,
+        protected int $cacheSeconds = 3600 // 1h
+    ) {}
 
     public function resolvePlanFor(mixed $billable): ?Plan
     {
@@ -40,8 +48,8 @@ class CashierBillingProvider implements BillingProvider
     public function pricesFor(Plan $plan): array
     {
         return [
-            'monthly' => $plan->provider_monthly_id ? ['provider_id' => $plan->provider_monthly_id] : null,
-            'yearly'  => $plan->provider_yearly_id ? ['provider_id' => $plan->provider_yearly_id] : null,
+            'monthly' => $plan->provider_monthly_id ? $this->fetchPrice($plan->provider_monthly_id) : null,
+            'yearly'  => $plan->provider_yearly_id ? $this->fetchPrice($plan->provider_yearly_id) : null,
         ];
     }
 
@@ -66,5 +74,39 @@ class CashierBillingProvider implements BillingProvider
         }
 
         return null;
+    }
+
+    protected function stripe(): StripeClient
+    {
+        if ( $this->stripe ) return $this->stripe;
+
+        $key = config('cashier.secret') ?: env('STRIPE_SECRET');
+
+        if ( !$key ) throw new RuntimeException("Stripe secret key not configured (cashier.secret / STRIPE_SECRET).");
+
+        return $this->stripe = new StripeClient($key);
+    }
+
+    protected function fetchPrice(string $priceId): array
+    {
+        $cacheKey = "feature-limiter:stripe:price:{$priceId}";
+
+        return Cache::remember($cacheKey, $this->cacheSeconds, function () use($priceId) {
+            $price = $this->stripe()->prices->retrieve($priceId, []);
+
+            $recurring = $price->recurring ?? null;
+
+            return [
+                'provider_id' => $price->id,
+                'active' => (bool) $price->active,
+                'currency' => strtoupper((string) $price->currency),
+                'unit_amount' => $price->unit_amount, // ex 1200
+                'unit_amount_decimal' => $price->unit_amount_decimal ?? null,
+                'interval' => $recurring?->interval, // 'month'|'year'|null
+                'interval_count' => $recurring?->interval_count, // 1, 12, ...
+                'product' => $price->product,
+                'nickname' => $price->nickname,
+            ];
+        });
     }
 }

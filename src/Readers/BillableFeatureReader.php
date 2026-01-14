@@ -7,9 +7,9 @@ use Illuminate\Support\Facades\DB;
 use MichaelLurquin\FeatureLimiter\Models\Plan;
 use MichaelLurquin\FeatureLimiter\Models\Feature;
 use MichaelLurquin\FeatureLimiter\Support\Storage;
-use MichaelLurquin\FeatureLimiter\Support\UsageAmountParser;
 use MichaelLurquin\FeatureLimiter\Enums\FeatureType;
 use MichaelLurquin\FeatureLimiter\Billing\BillingManager;
+use MichaelLurquin\FeatureLimiter\Support\UsageAmountParser;
 use MichaelLurquin\FeatureLimiter\Exceptions\QuotaExceededException;
 use MichaelLurquin\FeatureLimiter\Repositories\FeatureUsageRepository;
 
@@ -1119,6 +1119,7 @@ class BillableFeatureReader
         }
 
         $plan = $this->planOrFailCached();
+
         $features = $plan->features()->whereIn('key', $missing)->get();
 
         foreach ($features as $feature)

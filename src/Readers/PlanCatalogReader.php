@@ -8,7 +8,14 @@ use MichaelLurquin\FeatureLimiter\Billing\BillingManager;
 
 class PlanCatalogReader
 {
-    public function __construct(protected BillingManager $billing) {}
+    public function __construct(protected BillingManager $billing, protected ?string $provider = null) {}
+
+    public function includePrices(): self
+    {
+        $this->provider = config('feature-limiter.billing.default', 'cashier');
+
+        return $this;
+    }
 
     /**
      * Cards view (like pricing cards):
@@ -16,11 +23,11 @@ class PlanCatalogReader
      * - attaches a small set of "featured" features
      * - optionally includes prices from billing provider
      */
-    public function plansCards(array $featured = [], bool $onlyActivePlans = true, bool $onlyActiveFeatures = true, ?string $provider = null): array
+    public function plansCards(array $featured = [], bool $onlyActivePlans = true, bool $onlyActiveFeatures = true): array
     {
         $plans = $this->plansQuery($onlyActivePlans, $onlyActiveFeatures)->get();
 
-        $providerInstance = $provider !== null ? $this->billing->provider($provider) : null;
+        $providerInstance = $this->provider !== null ? $this->billing->provider($this->provider) : null;
 
         return $plans->map(function (Plan $plan) use ($featured, $providerInstance)
         {
@@ -60,7 +67,7 @@ class PlanCatalogReader
     /**
      * Comparison table grouped by feature.group
      */
-    public function comparisonTable(bool $onlyActivePlans = true, bool $onlyActiveFeatures = true, ?string $provider = null): array
+    public function comparisonTable(bool $onlyActivePlans = true, bool $onlyActiveFeatures = true): array
     {
         $plans = $this->plansQuery($onlyActivePlans, $onlyActiveFeatures)->get();
 
@@ -107,7 +114,7 @@ class PlanCatalogReader
                 ];
             })->values()->all();
 
-        $providerInstance = $provider !== null ? $this->billing->provider($provider) : null;
+        $providerInstance = $this->provider !== null ? $this->billing->provider($this->provider) : null;
         $prices = [];
 
         if ( $providerInstance )

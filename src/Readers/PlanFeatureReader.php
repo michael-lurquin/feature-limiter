@@ -11,6 +11,11 @@ class PlanFeatureReader
 
     public function __construct(protected Plan $plan) {}
 
+    public function prices(): array
+    {
+        return $this->plan->prices();
+    }
+
     public function raw(string $featureKey): ?array
     {
         if ( array_key_exists($featureKey, $this->rawCache) )
