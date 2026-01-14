@@ -369,8 +369,7 @@ FeatureLimiter can generate ready-to-render structures for your pricing pages.
 ```php
 $cards = FeatureLimiter::catalog()->plansCards(
     featured: ['sites', 'pages', 'storage', 'custom_code'],
-    onlyActivePlans: true,
-    provider: 'cashier', // optional
+    onlyActivePlans: true
 );
 ```
 
@@ -379,8 +378,7 @@ $cards = FeatureLimiter::catalog()->plansCards(
 ```php
 $table = FeatureLimiter::catalog()->comparisonTable(
     onlyActivePlans: true,
-    onlyActiveFeatures: true,
-    provider: 'cashier', // optional
+    onlyActiveFeatures: true
 );
 ```
 
