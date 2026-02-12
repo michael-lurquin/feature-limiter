@@ -14,7 +14,7 @@ class PlansBuilderTest extends TestCase
             'free' => ['sort' => 0],
             'starter' => ['sort' => 1],
             'comfort' => ['sort' => 2],
-            'pro' => ['name' => 'Gold', 'sort' => 3, 'price_monthly' => 9.99, 'price_yearly' => 129],
+            'pro' => ['name' => 'Gold', 'sort' => 3, 'description' => 'To begin with...', 'price_monthly' => 9.99, 'price_yearly' => 129],
             'enterprise' => ['sort' => 4, 'active' => false],
         ])->save();
 
@@ -24,11 +24,13 @@ class PlansBuilderTest extends TestCase
 
         $free = Plan::query()->where('key', 'free')->firstOrFail();
         $this->assertSame('Free', $free->name);
+        $this->assertNull($free->description);
         $this->assertSame(0, $free->sort);
         $this->assertTrue((bool) $free->active);
 
         $pro = Plan::query()->where('key', 'pro')->firstOrFail();
         $this->assertSame('Gold', $pro->name);
+        $this->assertSame('To begin with...', $pro->description);
         $this->assertSame(3, $pro->sort);
         $this->assertSame(9.99, $pro->price_monthly);
         $this->assertSame(129, $pro->price_yearly);

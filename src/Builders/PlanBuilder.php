@@ -18,6 +18,13 @@ class PlanBuilder
         return $this;
     }
 
+    public function description(string $description): self
+    {
+        $this->attributes['description'] = $description;
+
+        return $this;
+    }
+
     public function sort(int $sort): self
     {
         $this->attributes['sort'] = $sort;

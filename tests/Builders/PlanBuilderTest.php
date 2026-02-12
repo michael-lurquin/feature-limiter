@@ -17,6 +17,7 @@ class PlanBuilderTest extends TestCase
         $this->assertInstanceOf(Plan::class, $plan);
         $this->assertSame('starter', $plan->key);
         $this->assertSame('Starter', $plan->name);
+        $this->assertNull($plan->description);
 
         $plan->refresh();
         $this->assertSame(0, $plan->sort);
@@ -75,6 +76,7 @@ class PlanBuilderTest extends TestCase
     {
         $plan = FeatureLimiter::plan('starter')
             ->name('Starter')
+            ->description('To begin with...')
             ->sort(12)
             ->active(false)
             ->save();
@@ -83,6 +85,7 @@ class PlanBuilderTest extends TestCase
 
         $this->assertSame('starter', $plan->key);
         $this->assertSame('Starter', $plan->name);
+        $this->assertSame('To begin with...', $plan->description);
         $this->assertSame(12, $plan->sort);
         $this->assertFalse($plan->active);
         $this->assertNull($plan->price_monthly);

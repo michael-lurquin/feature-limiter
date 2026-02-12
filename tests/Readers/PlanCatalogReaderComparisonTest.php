@@ -15,7 +15,7 @@ class PlanCatalogReaderComparisonTest extends TestCase
     {
         $this->flPlan('free', 'Free', 0);
 
-        $this->flPlan('starter', 'Starter', 1, attributes: ['price_monthly' => 9.99, 'price_yearly' => 129]);
+        $this->flPlan('starter', 'Starter', 1, attributes: ['description' => 'To begin with...', 'price_monthly' => 9.99, 'price_yearly' => 129]);
 
         $this->flFeature('sites', FeatureType::INTEGER, 'Sites', 1, group: 'create-design');
         $this->flFeature('custom_code', FeatureType::BOOLEAN, 'Custom code', 2, group: 'create-design');
@@ -32,6 +32,9 @@ class PlanCatalogReaderComparisonTest extends TestCase
 
         $this->assertCount(1, $table['groups']);
         $this->assertSame('create-design', $table['groups'][0]['key']);
+
+        $this->assertNull($table['plans'][0]['description']);
+        $this->assertSame('To begin with...', $table['plans'][1]['description']);
 
         $prices = $table['prices']['starter'];
         $this->assertSame(9.99, $prices['monthly']);

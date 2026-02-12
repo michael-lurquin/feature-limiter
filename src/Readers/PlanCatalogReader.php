@@ -56,6 +56,7 @@ class PlanCatalogReader
             return [
                 'key' => $plan->key,
                 'name' => $plan->name,
+                'description' => $plan->description,
                 'sort' => (int) $plan->sort,
                 'active' => (bool) $plan->active,
                 'prices' => $providerInstance ? $providerInstance->pricesFor($plan) : [
@@ -77,6 +78,7 @@ class PlanCatalogReader
         $planHeaders = $plans->map(fn (Plan $p) => [
             'key' => $p->key,
             'name' => $p->name,
+            'description' => $p->description,
             'sort' => (int) $p->sort,
             'active' => (bool) $p->active,
         ])->values()->all();

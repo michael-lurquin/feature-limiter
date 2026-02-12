@@ -49,6 +49,7 @@ php artisan migrate
 ```php
 FeatureLimiter::plan('starter')
     ->name('Starter')
+    ->description('To begin with...')
     ->sort(0)
     ->active(true)
     ->monthly(9.99)
@@ -71,7 +72,7 @@ FeatureLimiter::plans([
     'free' => ['sort' => 0],
     'starter' => ['sort' => 1],
     'comfort' => ['sort' => 2],
-    'pro' => ['name' => 'Gold', 'sort' => 3, 'price_monthly' => 9.99, 'price_yearly' => 129],
+    'pro' => ['name' => 'Gold', 'sort' => 3, 'description' => 'To begin with...', 'price_monthly' => 9.99, 'price_yearly' => 129],
     'enterprise' => ['sort' => 4, 'active' => false],
 ])->save();
 ```
