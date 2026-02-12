@@ -51,6 +51,8 @@ FeatureLimiter::plan('starter')
     ->name('Starter')
     ->sort(0)
     ->active(true)
+    ->monthly(9.99)
+    ->yearly(129)
     ->save();
 ```
 
@@ -69,7 +71,7 @@ FeatureLimiter::plans([
     'free' => ['sort' => 0],
     'starter' => ['sort' => 1],
     'comfort' => ['sort' => 2],
-    'pro' => ['name' => 'Gold', 'sort' => 3],
+    'pro' => ['name' => 'Gold', 'sort' => 3, 'price_monthly' => 9.99, 'price_yearly' => 129],
     'enterprise' => ['sort' => 4, 'active' => false],
 ])->save();
 ```

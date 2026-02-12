@@ -15,6 +15,8 @@ return new class extends Migration
             $table->id();
             $table->string('key')->unique(); // free, starter, pro
             $table->string('name'); // Free, Starter, Pro
+            $table->unsignedInteger('price_monthly')->nullable(); // 10.99 => 1099 => price of cents
+            $table->unsignedInteger('price_yearly')->nullable();
 
             $table->string('provider')->nullable(); // 'cashier', 'paddle', ...
             $table->string('provider_monthly_id')->nullable(); // ex price_xxx

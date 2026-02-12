@@ -13,7 +13,7 @@ class PlanCatalogReaderCardsTest extends TestCase
 
     private function setupPlansAndFeatures(): void
     {
-        $this->flPlan('starter', 'Starter', 1);
+        $this->flPlan('starter', 'Starter', 1, attributes: ['price_monthly' => 9.99, 'price_yearly' => 129]);
         $this->flPlan('pro', 'Pro', 2);
 
         $this->flFeature('sites', FeatureType::INTEGER, 'Sites', 1);
@@ -38,6 +38,8 @@ class PlanCatalogReaderCardsTest extends TestCase
         $this->assertCount(2, $cards);
 
         $this->assertSame('starter', $cards[0]['key']);
+        $this->assertSame(9.99, $cards[0]['prices']['monthly']);
+        $this->assertSame(129, $cards[0]['prices']['yearly']);
         $this->assertSame(3, $cards[0]['featured'][0]['value']); // sites
         $this->assertSame('1GB', $cards[0]['featured'][1]['value']); // storage
         $this->assertFalse($cards[0]['featured'][2]['value']); // custom_code

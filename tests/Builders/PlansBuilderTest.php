@@ -14,7 +14,7 @@ class PlansBuilderTest extends TestCase
             'free' => ['sort' => 0],
             'starter' => ['sort' => 1],
             'comfort' => ['sort' => 2],
-            'pro' => ['name' => 'Gold', 'sort' => 3],
+            'pro' => ['name' => 'Gold', 'sort' => 3, 'price_monthly' => 9.99, 'price_yearly' => 129],
             'enterprise' => ['sort' => 4, 'active' => false],
         ])->save();
 
@@ -30,6 +30,12 @@ class PlansBuilderTest extends TestCase
         $pro = Plan::query()->where('key', 'pro')->firstOrFail();
         $this->assertSame('Gold', $pro->name);
         $this->assertSame(3, $pro->sort);
+        $this->assertSame(9.99, $pro->price_monthly);
+        $this->assertSame(129, $pro->price_yearly);
+        $this->assertSame(999, $pro->getRawOriginal('price_monthly'));
+        $this->assertSame(12900, $pro->getRawOriginal('price_yearly'));
+        $this->assertEqualsWithDelta(9.99, $pro->price_monthly, 0.00001);
+        $this->assertEqualsWithDelta(129.00, $pro->price_yearly, 0.00001);
 
         $enterprise = Plan::query()->where('key', 'enterprise')->firstOrFail();
         $this->assertSame('Enterprise', $enterprise->name);

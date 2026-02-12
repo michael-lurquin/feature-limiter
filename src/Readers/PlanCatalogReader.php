@@ -58,7 +58,10 @@ class PlanCatalogReader
                 'name' => $plan->name,
                 'sort' => (int) $plan->sort,
                 'active' => (bool) $plan->active,
-                'prices' => $providerInstance ? $providerInstance->pricesFor($plan) : [],
+                'prices' => $providerInstance ? $providerInstance->pricesFor($plan) : [
+                    'monthly' => $plan->price_monthly,
+                    'yearly' => $plan->price_yearly,
+                ],
                 'featured' => $featuredRows,
             ];
         })->values()->all();
@@ -117,12 +120,12 @@ class PlanCatalogReader
         $providerInstance = $this->provider !== null ? $this->billing->provider($this->provider) : null;
         $prices = [];
 
-        if ( $providerInstance )
+        foreach ($plans as $plan)
         {
-            foreach ($plans as $plan)
-            {
-                $prices[$plan->key] = $providerInstance->pricesFor($plan);
-            }
+            $prices[$plan->key] = $providerInstance ? $providerInstance->pricesFor($plan) : [
+                'monthly' => $plan->price_monthly,
+                'yearly' => $plan->price_yearly,
+            ];
         }
 
         return [

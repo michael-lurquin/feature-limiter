@@ -32,6 +32,20 @@ class PlanBuilder
         return $this;
     }
 
+    public function monthly(int|float|string|null $amount = null): self
+    {
+        $this->attributes['price_monthly'] = $amount;
+
+        return $this;
+    }
+
+    public function yearly(int|float|string|null $amount = null): self
+    {
+        $this->attributes['price_yearly'] = $amount;
+
+        return $this;
+    }
+
     public function save(): Plan
     {
         $plan = Plan::query()->firstOrNew(['key' => $this->key]);

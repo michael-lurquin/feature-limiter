@@ -17,14 +17,14 @@ trait InteractsWithFeatureLimiter
         };
     }
 
-    protected function flPlan(string $key, ?string $name = null, int $sort = 0, bool $active = true): Plan
+    protected function flPlan(string $key, ?string $name = null, int $sort = 0, bool $active = true, array $attributes = []): Plan
     {
         return Plan::create([
             'key' => $key,
             'name' => $name ?? ucfirst(str_replace('_', ' ', $key)),
             'sort' => $sort,
             'active' => $active,
-        ]);
+        ] + $attributes);
     }
 
     protected function flFeature(string $key, FeatureType $type, ?string $name = null, int $sort = 0, bool $active = true, ?string $group = null): Feature
