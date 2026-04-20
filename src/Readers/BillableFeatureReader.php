@@ -23,8 +23,26 @@ class BillableFeatureReader
     private array $featureRawCache = [];
     private ?UsageAmountParser $amountParser = null;
 
+    /**
+     * Create a new billable feature reader for tracking usage and quotas.
+     *
+     * @param mixed $billable Any object or Eloquent model with an `id` property (User, Team, Tenant, etc.)
+     * @param BillingManager $billing Billing provider manager for resolving plans
+     * @param FeatureUsageRepository $usages Usage repository for persisting consumption data
+     */
     public function __construct(protected mixed $billable, protected BillingManager $billing, protected FeatureUsageRepository $usages) {}
 
+    /**
+     * Override the billing provider for this billable.
+     *
+     * By default, uses the configured default provider. Call this to use a specific provider.
+     *
+     * @param string|null $providerName Provider name (must be configured), or null to reset to default
+     * @return self
+     *
+     * @example
+     * FeatureLimiter::for($user)->using('cashier')->plan();
+     */
     public function using(?string $providerName): self
     {
         $this->providerName = $providerName;
@@ -37,6 +55,18 @@ class BillableFeatureReader
         return $this;
     }
 
+    /**
+     * Resolve and return the billable's current subscription plan.
+     *
+     * Determined by the configured billing provider (e.g. Cashier/Stripe, custom, or fake).
+     * Returns null if no plan is assigned.
+     *
+     * @return Plan|null The billable's current plan or null
+     *
+     * @example
+     * $plan = FeatureLimiter::for($user)->plan();
+     * echo $plan->key; // 'starter', 'pro', etc.
+     */
     public function plan(): ?Plan
     {
         return $this->getPlan();
@@ -103,12 +133,25 @@ class BillableFeatureReader
         return $this->amountParser;
     }
 
-    // Plan (quota)
+    /**
+     * Get the quota limit assigned to a feature in the billable's plan.
+     *
+     * @param string $featureKey Feature identifier (e.g. 'sites', 'storage')
+     * @return int|string|null The quota limit, 'unlimited', or null if not assigned
+     *
+     * @see PlanFeatureReader::quota()
+     */
     public function quota(string $featureKey): int|string|null
     {
         return $this->planFeatureReader()->quota($featureKey);
     }
 
+    /**
+     * Check if a BOOLEAN feature is enabled in the billable's plan.
+     *
+     * @param string $featureKey Feature identifier (e.g. 'custom_code', 'api_access')
+     * @return bool True if enabled, false otherwise
+     */
     public function enabled(string $featureKey): bool
     {
         $feature = $this->refreshFeatureCache($featureKey);
@@ -126,48 +169,113 @@ class BillableFeatureReader
         return $feature->planFeature?->value === '1';
     }
 
+    /**
+     * Check if a BOOLEAN feature is disabled (inverse of enabled()).
+     *
+     * @param string $featureKey Feature identifier
+     * @return bool True if disabled, false otherwise
+     */
     public function disabled(string $featureKey): bool
     {
         return !$this->enabled($featureKey);
     }
 
+    /**
+     * Check if a feature is unlimited in the billable's plan.
+     *
+     * @param string $featureKey Feature identifier (e.g. 'storage', 'api_calls')
+     * @return bool True if unlimited, false otherwise
+     */
     public function unlimited(string $featureKey): bool
     {
         return $this->planFeatureReader()->unlimited($featureKey);
     }
 
+    /**
+     * Get the assigned value of a feature, formatted according to its type.
+     *
+     * @param string $featureKey Feature identifier (e.g. 'sites', 'storage', 'custom_code')
+     * @return mixed The feature value formatted per its type, or null if not assigned
+     *
+     * @see PlanFeatureReader::value()
+     */
     public function value(string $featureKey): mixed
     {
         return $this->planFeatureReader()->value($featureKey);
     }
 
-    // Usage (consommation)
+    /**
+     * Get the current usage amount for a feature consumed by this billable.
+     *
+     * Returns usage in appropriate units: integers for INTEGER features, bytes for STORAGE.
+     *
+     * @param string $featureKey Feature identifier (e.g. 'sites', 'storage')
+     * @return int Current usage in units (0 if never used)
+     */
     public function usage(string $featureKey): int
     {
         return $this->usages->used($this->billable, $featureKey);
     }
 
+    /**
+     * Set the usage to a specific value for a feature.
+     *
+     * This directly replaces the current usage (no validation against quota).
+     *
+     * @param string $featureKey Feature identifier
+     * @param int $value New usage value (0 or higher)
+     * @return int The new usage value
+     */
     public function setUsage(string $featureKey, int $value): int
     {
         return $this->usages->set($this->billable, $featureKey, $value);
     }
 
+    /**
+     * Increment usage by a specified amount.
+     *
+     * Does not check quota; use `consume()` for quota-aware consumption.
+     *
+     * @param string $featureKey Feature identifier
+     * @param int $amount Amount to increment by (default: 1)
+     * @return int The new usage value
+     */
     public function incrementUsage(string $featureKey, int $amount = 1): int
     {
         return $this->usages->increment($this->billable, $featureKey, $amount);
     }
 
+    /**
+     * Decrement usage by a specified amount.
+     *
+     * Usage is clamped to 0 (never goes negative).
+     *
+     * @param string $featureKey Feature identifier
+     * @param int $amount Amount to decrement by (default: 1)
+     * @return int The new usage value
+     */
     public function decrementUsage(string $featureKey, int $amount = 1): int
     {
         return $this->usages->decrement($this->billable, $featureKey, $amount);
     }
 
+    /**
+     * Clear usage (set to 0) for a feature.
+     *
+     * @param string $featureKey Feature identifier
+     * @return void
+     */
     public function clearUsage(string $featureKey): void
     {
         $this->usages->clear($this->billable, $featureKey);
     }
 
-    // Quota (plan - usage)
+    /**
+     * Get the raw Feature model (internal method, prefer high-level APIs).
+     *
+     * @param string $featureKey Feature identifier
+     * @return Feature|null The Feature model from the plan or null
+     */
     public function raw(string $featureKey): ?Feature
     {
         if ( array_key_exists($featureKey, $this->featureModelCache) )
@@ -184,11 +292,19 @@ class BillableFeatureReader
     }
 
     /**
-     * remainingQuota:
-     * - BOOLEAN: 1 or 0 (enabled/disabled)
-     * - INTEGER: int remaining
-     * - STORAGE: string remaining (e.g. "512MB") OR "unlimited"
-     * - Not found: null
+     * Get remaining quota available before hitting the limit.
+     *
+     * Returns in appropriate units per feature type:
+     * - BOOLEAN: 1 (enabled) or 0 (disabled)
+     * - INTEGER: remaining count
+     * - STORAGE: remaining formatted string (e.g. "512MB") or 'unlimited'
+     *
+     * @param string $featureKey Feature identifier
+     * @return int|string|null Remaining quota in units, 'unlimited', or null if not assigned
+     *
+     * @example
+     * FeatureLimiter::for($user)->remainingQuota('sites');    // Returns: 1 (out of 3)
+     * FeatureLimiter::for($user)->remainingQuota('storage');  // Returns: '512MB'
      */
     public function remainingQuota(string $featureKey): int|string|null
     {
@@ -213,11 +329,18 @@ class BillableFeatureReader
     }
 
     /**
-     * canConsume compares "amount" against remaining quota.
-     * - Unlimited => true
-     * - BOOLEAN => enabled() (amount is ignored except amount=0)
-     * - INTEGER => remaining >= amount
-     * - STORAGE => remainingBytes >= needBytes
+     * Check if enough quota is available to consume the specified amount (without consuming).
+     *
+     * For unlimited features, always returns true. Does not modify usage.
+     *
+     * @param string $featureKey Feature identifier
+     * @param int|string $amount Amount to check (in units for INTEGER, storage format for STORAGE)
+     * @return bool True if consumption would be allowed, false otherwise
+     *
+     * @example
+     * if (FeatureLimiter::for($user)->canConsume('sites', 1)) {
+     *     FeatureLimiter::for($user)->consume('sites', 1);
+     * }
      */
     public function canConsume(string $featureKey, int|string $amount = 1): bool
     {
@@ -240,6 +363,15 @@ class BillableFeatureReader
         };
     }
 
+    /**
+     * Check if consumption would exceed quota.
+     *
+     * Inverse of `canConsume()`. Does not modify usage.
+     *
+     * @param string $featureKey Feature identifier
+     * @param int|string $amount Amount to check (default: 1)
+     * @return bool True if quota would be exceeded, false otherwise
+     */
     public function exceededQuota(string $featureKey, int|string $amount = 1): bool
     {
         return !$this->canConsume($featureKey, $amount);
@@ -338,11 +470,53 @@ class BillableFeatureReader
         }
     }
 
+    /**
+     * Consume quota for a feature (transaction-safe, locks usage row).
+     *
+     * In non-strict mode (`$strict=false`): returns false if quota exceeded, usage unchanged.
+     * In strict mode (`$strict=true`): throws QuotaExceededException if quota exceeded.
+     *
+     * This method is transactional: either fully succeeds or fully fails.
+     *
+     * @param string $featureKey Feature identifier
+     * @param int|string $amount Amount to consume (units for INTEGER, format for STORAGE)
+     * @param bool $strict Default: false. If true, throws on quota exceeded instead of returning false
+     * @return int|false New usage value on success, or false if failed (non-strict only)
+     * @throws QuotaExceededException When strict=true and quota would be exceeded
+     *
+     * @example
+     * // Non-strict: handle failure gracefully
+     * if ($result = FeatureLimiter::for($user)->consume('sites', 1)) {
+     *     echo "Consumed. New usage: $result";
+     * } else {
+     *     echo "Quota exceeded";
+     * }
+     *
+     * // Strict: let exception bubble up
+     * $result = FeatureLimiter::for($user)->consume('sites', 1, strict: true);
+     */
     public function consume(string $featureKey, int|string $amount = 1, bool $strict = false): int|false
     {
         return $this->consumeUsage($featureKey, $amount, $strict);
     }
 
+    /**
+     * Consume quota or throw an exception (strict mode shorthand).
+     *
+     * Throws QuotaExceededException if quota would be exceeded or feature not found.
+     *
+     * @param string $featureKey Feature identifier
+     * @param int|string $amount Amount to consume (default: 1)
+     * @return int New usage value
+     * @throws QuotaExceededException If quota exceeded or feature not found
+     *
+     * @example
+     * try {
+     *     $newUsage = FeatureLimiter::for($user)->consumeOrFail('sites', 1);
+     * } catch (QuotaExceededException $e) {
+     *     echo "Quota exceeded: " . $e->getMessage();
+     * }
+     */
     public function consumeOrFail(string $featureKey, int|string $amount = 1): int
     {
         $res = $this->consumeUsage($featureKey, $amount, strict: true);
@@ -354,11 +528,23 @@ class BillableFeatureReader
     /**
      * Consume multiple features atomically (all-or-nothing).
      *
-     * @param array<string, int|string> $map featureKey => amount
-     * @return array<string, int>|false  new usages by featureKey (INTEGER units / STORAGE bytes)
+     * Either ALL features are consumed, or NONE are. If any feature's quota is exceeded,
+     * the entire operation fails and no changes are made.
      *
-     * If $strict=false: returns false on first failure (no change applied).
-     * If $strict=true: throws QuotaExceededException on first failure.
+     * In non-strict mode: returns false on failure, array of new usages on success.
+     * In strict mode: throws QuotaExceededException on failure.
+     *
+     * @param array<string, int|string> $map Feature key => amount mapping
+     * @param bool $strict Default: false. If true, throws on any failure
+     * @return array<string, int>|false Array of feature => new_usage on success, or false (non-strict only)
+     * @throws QuotaExceededException When strict=true and any quota would be exceeded
+     *
+     * @example
+     * $result = FeatureLimiter::for($user)->consumeMany([
+     *     'sites' => 1,
+     *     'storage' => '500MB',
+     * ]);
+     * // Returns: ['sites' => 1, 'storage' => 524288000] or false if any fails
      */
     public function consumeMany(array $map, bool $strict = false): array|false
     {
@@ -406,10 +592,10 @@ class BillableFeatureReader
             {
                 $feature = $features[$featureKey];
 
-                // BOOLEAN: no usage tracking; only "enabled" check (unless amount is zero, already filtered)
+                // BOOLEAN: check enabled state but do not track usage
                 if ( $feature->type === FeatureType::BOOLEAN )
                 {
-                    if ( !$this->enabled($featureKey ))
+                    if ( !$this->enabled($featureKey) )
                     {
                         if ( $strict )
                         {
@@ -419,7 +605,6 @@ class BillableFeatureReader
                         return false;
                     }
 
-                    // no delta, no row to lock
                     continue;
                 }
 
@@ -549,6 +734,13 @@ class BillableFeatureReader
         });
     }
 
+    /**
+     * Consume multiple features or throw an exception (strict mode shorthand).
+     *
+     * @param array<string, int|string> $map Feature key => amount mapping
+     * @return array<string, int> Array of feature => new_usage on success
+     * @throws QuotaExceededException If any quota would be exceeded
+     */
     public function consumeManyOrFail(array $map): array
     {
         $res = $this->consumeMany($map, strict: true);
@@ -614,22 +806,15 @@ class BillableFeatureReader
                 return false;
             }
 
-            // Boolean: no usage tracking by default, just check enabled
+            // Boolean: cannot be consumed (not usage-tracked)
             if ( $feature->type === FeatureType::BOOLEAN )
             {
-                $allowed = $this->enabled($featureKey) || $this->amountParser()->isZeroAmount($amount);
-
-                if ( !$allowed )
+                if ( $strict )
                 {
-                    if ( $strict )
-                    {
-                        throw new QuotaExceededException($featureKey, $amount, 0);
-                    }
-
-                    return false;
+                    throw new QuotaExceededException($featureKey, $amount, 0);
                 }
 
-                return $this->usage($featureKey);
+                return false;
             }
 
             // Unlimited => always allowed; we still track usage for INTEGER/STORAGE
@@ -746,6 +931,20 @@ class BillableFeatureReader
         return $delta;
     }
 
+    /**
+     * Refund (decrement) usage for a feature.
+     *
+     * Usage is clamped to 0 (never goes negative). Transactional and quota-aware.
+     *
+     * @param string $featureKey Feature identifier
+     * @param int|string $amount Amount to refund (default: 1)
+     * @param bool $strict Default: false. If true, throws on invalid feature/amount
+     * @return int|false New usage value on success, or false (non-strict only)
+     * @throws QuotaExceededException When strict=true and refund would fail
+     *
+     * @example
+     * FeatureLimiter::for($user)->refund('sites', 1);  // Returns: new usage value
+     */
     public function refund(string $featureKey, int|string $amount = 1, bool $strict = false): int|false
     {
         return $this->refundUsage($featureKey, $amount, $strict);
@@ -781,10 +980,15 @@ class BillableFeatureReader
                 return false;
             }
 
-            // BOOLEAN: not tracked by default
+            // BOOLEAN: cannot be refunded (not usage-tracked)
             if ( $feature->type === FeatureType::BOOLEAN )
             {
-                return $this->usage($featureKey);
+                if ( $strict )
+                {
+                    throw new QuotaExceededException($featureKey, $amount, 0);
+                }
+
+                return false;
             }
 
             // Parse delta
@@ -814,8 +1018,18 @@ class BillableFeatureReader
     /**
      * Refund multiple features atomically (all-or-nothing).
      *
-     * @param array<string, int|string> $map featureKey => amount
-     * @return array<string, int>|false new usages by featureKey
+     * If any refund fails, the entire operation fails and no changes are made.
+     *
+     * @param array<string, int|string> $map Feature key => amount mapping
+     * @param bool $strict Default: false. If true, throws on any failure
+     * @return array<string, int>|false Array of feature => new_usage on success, or false (non-strict only)
+     * @throws QuotaExceededException When strict=true and any refund would fail
+     *
+     * @example
+     * $result = FeatureLimiter::for($user)->refundMany([
+     *     'sites' => 1,
+     *     'storage' => '500MB',
+     * ]);
      */
     public function refundMany(array $map, bool $strict = false): array|false
     {
@@ -857,7 +1071,15 @@ class BillableFeatureReader
             {
                 $feature = $features[$featureKey];
 
-                if ( $feature->type === FeatureType::BOOLEAN ) continue;
+                if ( $feature->type === FeatureType::BOOLEAN )
+                {
+                    if ( $strict )
+                    {
+                        throw new QuotaExceededException($featureKey, $amount, 0);
+                    }
+
+                    return false;
+                }
 
                 $delta = $this->amountToDeltaOrFail($feature->type, $amount, $featureKey, $strict);
 
@@ -900,6 +1122,13 @@ class BillableFeatureReader
         });
     }
 
+    /**
+     * Refund multiple features or throw an exception (strict mode shorthand).
+     *
+     * @param array<string, int|string> $map Feature key => amount mapping
+     * @return array<string, int> Array of feature => new_usage on success
+     * @throws QuotaExceededException If any refund would fail
+     */
     public function refundManyOrFail(array $map): array
     {
         $res = $this->refundMany($map, strict: true);
@@ -908,16 +1137,17 @@ class BillableFeatureReader
     }
 
     /**
-     * remainingQuotaMany:
-     * Returns a map of featureKey => remainingQuota(featureKey)
+     * Get remaining quota for multiple features in one call.
      *
-     * Example:
-     *  [
-     *    'sites' => 3,
-     *    'storage' => '512MB',
-     *    'custom_code' => 1,
-     *    'unknown' => null,
-     *  ]
+     * @param array<int|string, mixed> $features List or map of feature keys:
+     *        ['sites', 'storage'] or ['sites' => 1, 'storage' => '500MB']
+     * @return array<string, int|string|null> Map of feature => remaining quota
+     *
+     * @example
+     * $remaining = FeatureLimiter::for($user)->remainingQuotaMany([
+     *     'sites', 'storage', 'custom_code'
+     * ]);
+     * // Returns: ['sites' => 2, 'storage' => '512MB', 'custom_code' => 1]
      */
     public function remainingQuotaMany(array $features): array
     {
@@ -944,23 +1174,21 @@ class BillableFeatureReader
     }
 
     /**
-     * canConsumeMany:
-     * Checks multiple features without writing anything.
+     * Check if multiple features can be consumed (without consuming).
      *
-     * Input format:
-     *  [
-     *    'sites' => 1,
-     *    'storage' => '500MB',
-     *    'custom_code' => 1,
-     *  ]
+     * Returns true only if ALL features can be consumed. Useful for pre-flight checks.
      *
-     * Returns:
-     *  - true if ALL can be consumed
-     *  - false if any fails (non-strict)
+     * @param array<int|string, mixed> $features Feature keys and amounts:
+     *        ['sites', 'storage'] (default amount=1) or ['sites' => 1, 'storage' => '500MB']
+     * @param bool $strict Default: false. If true, throws on first failure
+     * @return bool True if ALL features can be consumed, false otherwise (non-strict only)
+     * @throws QuotaExceededException When strict=true and any quota check fails
      *
-     * Strict:
-     *  - throws QuotaExceededException on first failing item
-    */
+     * @example
+     * if (FeatureLimiter::for($user)->canConsumeMany(['sites' => 2, 'storage' => '1GB'])) {
+     *     FeatureLimiter::for($user)->consumeMany([...]);
+     * }
+     */
     public function canConsumeMany(array $features, bool $strict = false): bool
     {
         // Normalize to map: featureKey => aggregated amount
