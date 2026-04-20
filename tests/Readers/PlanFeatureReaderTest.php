@@ -60,4 +60,36 @@ class PlanFeatureReaderTest extends TestCase
         $this->assertTrue($reader->value('custom_code'));
         $this->assertSame(5, $reader->value('sites'));
     }
+
+    public function test_it_returns_prices_from_billing_provider(): void
+    {
+        // Setup plan with provider IDs for testing
+        $plan = \MichaelLurquin\FeatureLimiter\Models\Plan::create([
+            'key' => 'pro',
+            'name' => 'Pro',
+            'provider' => 'fake',
+            'provider_monthly_id' => 'price_monthly_123',
+            'provider_yearly_id' => 'price_yearly_456',
+        ]);
+
+        // Mock the FakeBillingProvider to return specific prices
+        \MichaelLurquin\FeatureLimiter\Tests\Fakes\FakeBillingProvider::$pricesResolver = function (\MichaelLurquin\FeatureLimiter\Models\Plan $p) {
+            if ($p->key === 'pro') {
+                return [
+                    'monthly' => ['unit_amount' => 2999, 'currency' => 'USD', 'interval' => 'month'],
+                    'yearly' => ['unit_amount' => 29900, 'currency' => 'USD', 'interval' => 'year'],
+                ];
+            }
+            return [];
+        };
+
+        $reader = FeatureLimiter::viewPlan('pro');
+        $prices = $reader->prices();
+
+        $this->assertIsArray($prices);
+        $this->assertArrayHasKey('monthly', $prices);
+        $this->assertArrayHasKey('yearly', $prices);
+        $this->assertSame(2999, $prices['monthly']['unit_amount']);
+        $this->assertSame(29900, $prices['yearly']['unit_amount']);
+    }
 }

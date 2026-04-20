@@ -8,6 +8,7 @@ use MichaelLurquin\FeatureLimiter\Contracts\BillingProvider;
 class FakeBillingProvider implements BillingProvider
 {
     public static $resolver = null;
+    public static $pricesResolver = null;
 
     public function resolvePlanFor(mixed $billable): ?Plan
     {
@@ -21,6 +22,11 @@ class FakeBillingProvider implements BillingProvider
 
     public function pricesFor(Plan $plan): array
     {
+        if ( is_callable(static::$pricesResolver) )
+        {
+            return (static::$pricesResolver)($plan);
+        }
+
         return [];
     }
 }
